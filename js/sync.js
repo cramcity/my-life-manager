@@ -103,6 +103,12 @@ export async function connect({ email, password, signup }) {
   startLoops();
   return { existing };
 }
+/** Appel authentifié à l'API (utilisé par les notifications). */
+export async function cloud(path, opts = {}) {
+  if (!cfg?.accessToken) throw new Error('Non connecté');
+  await ensureToken();
+  return api(path, opts);
+}
 export async function disconnect() {
   cfg = null; S.setWriteHook(null);
   await S.secureSet('sync', null);

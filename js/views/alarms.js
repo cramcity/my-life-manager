@@ -6,6 +6,8 @@ import { nextAlarm, upcomingReminders } from '../recur.js';
 import { editAlarm } from '../editors.js';
 import { SOUNDS, notifPermission, requestNotif, wakeSupported, wakeActive, toggleWake, testRing, notify } from '../alarm-engine.js';
 import { shortcutAlarmURL, exportICS } from '../ics.js';
+import { pushSupported, pushOnHere, enablePush, disablePush, testPush } from '../push.js';
+import { isLoggedIn } from '../sync.js';
 
 const daysLabel = d => {
   if (!d?.length) return 'Une seule fois';
@@ -16,6 +18,18 @@ const daysLabel = d => {
   return [1, 2, 3, 4, 5, 6, 0].filter(x => d.includes(x)).map(x => ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'][x]).join(' ');
 };
 const inDelay = at => { const m = Math.round((at - Date.now()) / 60000); if (m < 60) return `dans ${m} min`; const h = Math.floor(m / 60); return h < 24 ? `dans ${h} h ${pad(m % 60)}` : `dans ${Math.floor(h / 24)} j ${h % 24} h`; };
+
+function notifCard(perm, ios, pwa) {
+  const on = pushOnHere() && perm === 'granted';
+  let txt, btn = '';
+  if (ios && !pwa) txt = "Sur iPhone, installez d'abord l'app sur l'écran d'accueil (Partager › « Sur l'écran d'accueil »), puis ouvrez-la depuis son icône. iOS 16.4 ou plus récent.";
+  else if (!pushSupported()) txt = 'Non prises en charge par ce navigateur.';
+  else if (!isLoggedIn()) txt = 'Connectez-vous à votre profil (Réglages › Mon profil) pour recevoir les notifications même app fermée.';
+  else if (perm === 'denied') txt = "Refusées. Réactivez-les dans Réglages de l'iPhone › Notifications › My Life, puis revenez ici.";
+  else if (on) { txt = "Actives sur cet appareil : vous êtes prévenu de vos alarmes, rappels et tâches du jour, même app fermée et iPhone verrouillé (bannière + son de notification)."; btn = '<button class="btn btn-sm" data-push-test>Tester maintenant</button><button class="btn btn-sm btn-ghost" data-push-off>Désactiver</button>'; }
+  else { txt = "Recevez une notification pour chaque alarme, rappel et tâche du jour, même quand l'app est fermée."; btn = '<button class="btn btn-sm btn-primary" data-push-on>Activer les notifications</button>'; }
+  return `<div class="rel-item ${on ? 'ok' : 'warn'}"><b>${icon('bell')} Notifications sur l'iPhone</b><span>${txt}</span><div class="row wrap">${btn}</div></div>`;
+}
 
 function render(el, params, ctx) {
   const alarms = S.all('alarms').sort((a, b) => a.time.localeCompare(b.time));
@@ -32,8 +46,7 @@ function render(el, params, ctx) {
         <div class="rel-item ok"><b>${icon('calendar')} Calendrier iPhone</b><span>Exportez alarmes, tâches et rendez-vous en .ics : Apple Calendrier envoie des notifications fiables.</span><a class="link" href="#/reglages#iphone">Exporter tout</a></div>
         <div class="rel-item ${pwa ? 'ok' : 'warn'}"><b>${icon('volume')} Dans l'application</b><span>Sonnerie et écran d'alarme quand l'app est ouverte au premier plan${wakeSupported() ? ' (gardez l\'écran allumé avec le mode réveil de nuit)' : ''}.</span>
           ${wakeSupported() ? `<button class="btn btn-sm ${wakeActive() ? 'btn-primary' : ''}" data-wake>${icon('moon')} ${wakeActive() ? 'Mode réveil de nuit : actif' : 'Activer le mode réveil de nuit'}</button>` : ''}</div>
-        <div class="rel-item ${perm === 'granted' ? 'ok' : 'warn'}"><b>${icon('bell')} Notifications</b><span>${perm === 'granted' ? 'Autorisées.' : perm === 'denied' ? 'Refusées : réactivez-les dans Réglages iOS › Notifications.' : perm === 'unsupported' ? (ios && !pwa ? "Sur iPhone, installez d'abord l'app sur l'écran d'accueil (iOS 16.4+)." : 'Non prises en charge par ce navigateur.') : 'Pas encore autorisées.'}</span>
-          ${perm === 'default' ? '<button class="btn btn-sm" data-notif>Autoriser les notifications</button>' : perm === 'granted' ? '<button class="btn btn-sm" data-notif-test>Tester une notification</button>' : ''}</div>
+        ${notifCard(perm, ios, pwa)}
       </div>
     </div>
 
@@ -65,7 +78,7 @@ function render(el, params, ctx) {
     </section>`;
 
   el.addEventListener('click', async e => {
-    const b = e.target.closest('[data-new],[data-edit],[data-clock],[data-test],[data-wake],[data-notif],[data-notif-test],[data-ics]');
+    const b = e.target.closest('[data-new],[data-edit],[data-clock],[data-test],[data-wake],[data-notif],[data-notif-test],[data-ics],[data-push-on],[data-push-off],[data-push-test]');
     if (!b) return;
     if (b.hasAttribute('data-new')) editAlarm();
     else if (b.dataset.edit) editAlarm(S.get('alarms', b.dataset.edit));
@@ -74,6 +87,19 @@ function render(el, params, ctx) {
     else if (b.dataset.test) testRing(S.get('alarms', b.dataset.test).sound);
     else if (b.hasAttribute('data-wake')) { const on = await toggleWake(!wakeActive()); toast(on ? "Écran maintenu allumé : laissez l'app ouverte et le téléphone branché." : 'Mode réveil de nuit désactivé'); ctx.rerender(); }
     else if (b.hasAttribute('data-notif')) { await requestNotif(); ctx.rerender(); }
+    else if (b.hasAttribute('data-push-on')) {
+      b.disabled = true; b.textContent = 'Activation…';
+      try { await enablePush(); toast('Notifications activées ✅ Touchez « Tester maintenant » pour vérifier.'); }
+      catch (err) { toast(err.message, { type: 'warn', timeout: 9000 }); }
+      ctx.rerender();
+    }
+    else if (b.hasAttribute('data-push-off')) { await disablePush(); toast('Notifications désactivées sur cet appareil'); ctx.rerender(); }
+    else if (b.hasAttribute('data-push-test')) {
+      b.disabled = true; b.textContent = 'Envoi…';
+      try { const r = await testPush(); toast(r.sent ? `Notification envoyée à ${r.sent} appareil${r.sent > 1 ? 's' : ''}. Elle arrive dans quelques secondes.` : "Le serveur n'a pas pu l'envoyer : désactivez puis réactivez les notifications.", { type: r.sent ? undefined : 'warn', timeout: 7000 }); }
+      catch (err) { toast(err.message, { type: 'warn', timeout: 8000 }); }
+      b.disabled = false; b.textContent = 'Tester maintenant';
+    }
     else if (b.hasAttribute('data-notif-test')) { const ok = await notify('My Life Manager', 'Les notifications fonctionnent ✅', 'test'); if (!ok) toast("Impossible d'afficher la notification", { type: 'warn' }); }
   });
   el.addEventListener('change', async e => {

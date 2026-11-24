@@ -1,8 +1,8 @@
 // Service worker : fonctionnement hors connexion (cache de l'application) et notifications.
-const VERSION = 'mlm-v1.2.0';
+const VERSION = 'mlm-v1.3.0';
 const ASSETS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
-  'js/app.js', 'js/auth.js', 'js/config.js', 'js/store.js', 'js/utils.js', 'js/icons.js', 'js/recur.js', 'js/alarm-engine.js', 'js/ics.js', 'js/sync.js',
+  'js/app.js', 'js/auth.js', 'js/config.js', 'js/push.js', 'js/store.js', 'js/utils.js', 'js/icons.js', 'js/recur.js', 'js/alarm-engine.js', 'js/ics.js', 'js/sync.js',
   'js/components.js', 'js/editors.js', 'js/theme.js',
   'js/views/dashboard.js', 'js/views/calendar.js', 'js/views/tasks.js', 'js/views/notes.js', 'js/views/alarms.js',
   'js/views/projects.js', 'js/views/progress.js', 'js/views/settings.js', 'js/views/guide.js',
@@ -44,10 +44,20 @@ function networkFirst(req, key) {
     });
   });
 }
+// Notification « push » reçue (app fermée ou iPhone verrouillé) : le contenu a été chiffré pour cet appareil.
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data?.text() || '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'My Life Manager', {
+    body: d.body || '', tag: d.tag || undefined, renotify: !!d.tag,
+    icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', data: { url: d.url || './' },
+  }));
+});
 self.addEventListener('notificationclick', e => {
   e.notification.close();
+  const url = new URL(e.notification.data?.url || './', self.registration.scope).href;
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-    for (const c of list) { if ('focus' in c) return c.focus(); }
-    return self.clients.openWindow('./');
+    for (const c of list) { if ('focus' in c) { c.navigate?.(url).catch?.(() => { }); return c.focus(); } }
+    return self.clients.openWindow(url);
   }));
 });

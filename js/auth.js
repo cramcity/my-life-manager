@@ -1,6 +1,7 @@
 // Écran « Mon profil » : créer un profil ou se connecter pour retrouver ses données sur tous ses appareils.
 import * as S from './store.js';
 import * as Sync from './sync.js';
+import { disablePush } from './push.js';
 import { icon } from './icons.js';
 import { esc, toast } from './utils.js';
 
@@ -85,6 +86,7 @@ export function authScreen({ allowSkip = true, allowClose = false, mode = 'signu
 export async function logout() {
   try { await Sync.syncNow(); }
   catch (e) { throw new Error("Impossible d'envoyer vos dernières modifications (" + e.message + '). Reconnectez-vous à Internet puis réessayez.'); }
+  await disablePush().catch(() => { }); // plus de notifications de ce profil sur cet appareil
   await Sync.disconnect();
   await S.wipeAll();
   try { localStorage.clear(); } catch { }

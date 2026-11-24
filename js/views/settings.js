@@ -37,10 +37,11 @@ async function render(el, params, ctx) {
         <label class="field"><span>Son par défaut</span><div class="row"><select class="input" data-set="defaultSound">${SOUNDS.map(o => `<option value="${o.value}" ${s.defaultSound === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}</select><button class="btn" data-preview>▶︎</button></div></label>
         <label class="field"><span>Nom du raccourci « alarme »</span><input class="input" data-set="shortcutAlarm" value="${esc(s.shortcutAlarm)}"></label>
         <label class="field"><span>Nom du raccourci « rappel »</span><input class="input" data-set="shortcutReminder" value="${esc(s.shortcutReminder)}"></label>
+        <label class="field"><span>Résumé des tâches du jour (notification)</span><select class="input" data-set="digestTime"><option value="off" ${s.pushDigest === false ? 'selected' : ''}>Désactivé</option>${['06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '10:00'].map(t => `<option value="${t}" ${s.pushDigest !== false && (s.digestTime || '08:00') === t ? 'selected' : ''}>Chaque matin à ${t}</option>`).join('')}</select></label>
       </div>
       <div class="row wrap mt">
         <span class="muted small">Notifications : <b>${{ granted: 'autorisées', denied: 'refusées', default: 'non demandées', unsupported: 'non disponibles ici' }[notifPermission()]}</b></span>
-        ${notifPermission() === 'default' ? '<button class="btn btn-sm" data-notif>Autoriser</button>' : ''}
+        <a class="btn btn-sm" href="#/alarmes">${icon('bell')} Notifications sur l'iPhone</a>
         <a class="btn btn-sm" href="#/guide#raccourcis">${icon('phone')} Configurer les raccourcis iPhone</a>
       </div>`)}
 
@@ -82,12 +83,16 @@ async function render(el, params, ctx) {
       <p class="small">Données enregistrées dans la base IndexedDB de l'appareil (conservée après fermeture). Stockage durable : <b>${persisted ? 'accordé ✅' : 'non garanti'}</b>${est ? ` · utilisé : ${(est.usage / 1048576).toFixed(1)} Mo` : ''}.</p>
       <p class="muted small">Sur iPhone, installez l'app sur l'écran d'accueil : Safari peut sinon effacer les données d'un site non visité pendant 7 jours. Faites des sauvegardes régulières ou activez la synchronisation.</p>
       <div class="row wrap">${!persisted && navigator.storage?.persist ? '<button class="btn btn-sm" data-persist>Demander le stockage durable</button>' : ''}<button class="btn btn-sm btn-ghost-danger" data-wipe>${icon('trash')} Effacer toutes les données de cet appareil</button></div>
-      <p class="muted small mt">My Life Manager · version 1.2 · fonctionne hors connexion</p>`)}
+      <p class="muted small mt">My Life Manager · version 1.3 · fonctionne hors connexion</p>`)}
     </div>`;
 
   /* ---------- Gestion des événements ---------- */
   el.addEventListener('change', async e => {
     const t = e.target;
+    if (t.dataset.set === 'digestTime') {
+      await S.setSettings(t.value === 'off' ? { pushDigest: false } : { pushDigest: true, digestTime: t.value });
+      toast('Réglage enregistré'); return;
+    }
     if (t.dataset.set) {
       const v = t.hasAttribute('data-num') ? Number(t.value) : t.value;
       await S.setSettings({ [t.dataset.set]: v }, { silent: true });
