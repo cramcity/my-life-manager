@@ -44,10 +44,12 @@ async function api(path, { method = 'GET', body, auth = true, headers = {} } = {
   }
   return j;
 }
+// Message volontairement neutre : l'app ne révèle jamais si une adresse e-mail possède déjà un profil.
+const GENERIC_SIGNUP = 'Impossible de créer un profil avec ces informations. Si vous avez déjà un profil, utilisez « Se connecter ».';
 function frenchError(msg, code, status) {
   const m = (msg || '').toLowerCase();
   if (code === 'invalid_credentials' || m.includes('invalid login')) return 'E-mail ou mot de passe incorrect.';
-  if (code === 'user_already_exists' || m.includes('already registered')) return 'Un profil existe déjà avec cet e-mail : utilisez « Se connecter ».';
+  if (code === 'user_already_exists' || m.includes('already registered')) return GENERIC_SIGNUP;
   if (code === 'weak_password' || m.includes('password should')) return 'Mot de passe trop faible : 8 caractères minimum.';
   if (code === 'email_address_invalid' || m.includes('invalid format') || m.includes('email address')) return 'Adresse e-mail invalide.';
   if (code === 'over_request_rate_limit' || code === 'over_email_send_rate_limit' || status === 429) return 'Trop de tentatives. Patientez une minute puis réessayez.';
@@ -76,16 +78,21 @@ async function derivePassphrase(email, password) {
 
 /** Crée un profil (signup) ou se connecte. Ne synchronise pas : l'appelant appelle syncNow(). */
 export async function connect({ email, password, signup }) {
+  let existing = !signup;
   email = email.trim().toLowerCase();
   const prev = cfg;
   cfg = { email, lastSync: 0 };
   try {
     if (signup) {
-      const j = await api('/auth/v1/signup', { method: 'POST', auth: false, body: { email, password } });
-      if (!j?.access_token) {
-        // Supabase renvoie un faux succès si l'e-mail existe déjà (protection contre l'énumération)
-        throw new Error('Un profil existe peut-être déjà avec cet e-mail : essayez « Se connecter ».');
+      let j = null; existing = false;
+      try { j = await api('/auth/v1/signup', { method: 'POST', auth: false, body: { email, password } }); }
+      catch (e) {
+        if (e.message !== GENERIC_SIGNUP) throw e;
+        // Profil existant : si le mot de passe est le bon, c'est son propriétaire → on le connecte simplement
+        try { j = await api('/auth/v1/token?grant_type=password', { method: 'POST', auth: false, body: { email, password } }); existing = true; }
+        catch { throw new Error(GENERIC_SIGNUP); }
       }
+      if (!j?.access_token) throw new Error(GENERIC_SIGNUP);
       applySession(j);
     } else {
       applySession(await api('/auth/v1/token?grant_type=password', { method: 'POST', auth: false, body: { email, password } }));
@@ -94,6 +101,7 @@ export async function connect({ email, password, signup }) {
   cfg.passphrase = await derivePassphrase(email, password);
   await save();
   startLoops();
+  return { existing };
 }
 export async function disconnect() {
   cfg = null; S.setWriteHook(null);

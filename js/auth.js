@@ -58,8 +58,9 @@ export function authScreen({ allowSkip = true, allowClose = false, mode = 'signu
       const btn = f.querySelector('[type=submit]'); btn.disabled = true; btn.textContent = up ? 'Création du profil…' : 'Connexion…';
       err('');
       try {
-        await Sync.connect({ email: v.email, password: v.password, signup: up });
-        if (up) {
+        const { existing } = await Sync.connect({ email: v.email, password: v.password, signup: up });
+        const fresh = up && !existing; // vrai nouveau profil (sinon : profil existant, on récupère ses données)
+        if (fresh) {
           await S.seedIfNeeded();
           if (v.presets) await S.seedPresetProjects();
           await S.setSettings({ name: v.name.trim(), syncOn: true }, { silent: true });
@@ -70,8 +71,8 @@ export function authScreen({ allowSkip = true, allowClose = false, mode = 'signu
         }
         try { localStorage.removeItem('mlm:noAccount'); } catch { }
         await Sync.syncNow().catch(() => { });
-        close(up ? 'signup' : 'login');
-        toast(up ? `Profil créé. Bienvenue ${esc(v.name.trim())} !` : 'Connecté : vos données sont à jour ✅');
+        close(fresh ? 'signup' : 'login');
+        toast(fresh ? `Profil créé. Bienvenue ${v.name.trim()} !` : 'Connecté : vos données sont à jour ✅');
       } catch (ex) {
         err(ex.message || 'Échec de la connexion.');
         btn.disabled = false; btn.innerHTML = up ? icon('check') + ' Créer mon profil' : icon('cloud') + ' Se connecter';

@@ -82,7 +82,7 @@ async function render(el, params, ctx) {
       <p class="small">Données enregistrées dans la base IndexedDB de l'appareil (conservée après fermeture). Stockage durable : <b>${persisted ? 'accordé ✅' : 'non garanti'}</b>${est ? ` · utilisé : ${(est.usage / 1048576).toFixed(1)} Mo` : ''}.</p>
       <p class="muted small">Sur iPhone, installez l'app sur l'écran d'accueil : Safari peut sinon effacer les données d'un site non visité pendant 7 jours. Faites des sauvegardes régulières ou activez la synchronisation.</p>
       <div class="row wrap">${!persisted && navigator.storage?.persist ? '<button class="btn btn-sm" data-persist>Demander le stockage durable</button>' : ''}<button class="btn btn-sm btn-ghost-danger" data-wipe>${icon('trash')} Effacer toutes les données de cet appareil</button></div>
-      <p class="muted small mt">My Life Manager · version 1.1 · fonctionne hors connexion</p>`)}
+      <p class="muted small mt">My Life Manager · version 1.2 · fonctionne hors connexion</p>`)}
     </div>`;
 
   /* ---------- Gestion des événements ---------- */
