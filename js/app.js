@@ -17,8 +17,9 @@ import projects from './views/projects.js';
 import progress from './views/progress.js';
 import settings from './views/settings.js';
 import guide from './views/guide.js';
+import receive from './views/receive.js';
 
-const ROUTES = { '': dashboard, agenda: calendar, taches: tasks, notes, alarmes: alarms, projets: projects, suivi: progress, reglages: settings, guide };
+const ROUTES = { '': dashboard, agenda: calendar, taches: tasks, notes, alarmes: alarms, projets: projects, suivi: progress, reglages: settings, guide, recevoir: receive };
 const NAV = [
   ['', 'Accueil', 'home'], ['agenda', 'Agenda', 'calendar'], ['taches', 'Tâches', 'tasks'], ['notes', 'Notes', 'notes'],
   ['alarmes', 'Alarmes', 'alarm'], ['projets', 'Projets', 'folder'], ['suivi', 'Suivi', 'chart'], ['reglages', 'Réglages', 'settings'], ['guide', 'Guide iPhone', 'phone'],

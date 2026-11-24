@@ -73,6 +73,16 @@ export default {
         <p class="muted">Astuce : créez un calendrier « My Life Manager » dans l'app Calendrier pour regrouper ces éléments. Si vous modifiez un élément dans l'app, exportez-le de nouveau.</p>
       </section>
 
+      <section class="card" id="partage">
+        <h2>${icon('share')} Partager une tâche</h2>
+        <ol>
+          <li>Ouvrez la tâche › <b>Partager</b>, puis choisissez Messages, WhatsApp, e-mail…</li>
+          <li>La personne touche le lien : elle voit la tâche et touche <b>Ajouter à mes tâches</b>. La tâche arrive dans ses tâches à faire, avec la date, l'heure, la priorité et les rappels.</li>
+          <li>Sur iPhone, un lien s'ouvre dans <b>Safari</b> (pas dans l'icône de l'app) : la première fois, il faut s'y connecter à son profil. La tâche ajoutée apparaît ensuite automatiquement dans l'app. Autre possibilité : copier le lien, puis dans l'app <b>Tâches › Recevoir</b> et le coller.</li>
+          <li>Le lien contient seulement cette tâche (pas vos autres données). Il n'est jamais envoyé à nos serveurs, mais toute personne qui le reçoit peut le lire : ne le partagez qu'avec la bonne personne.</li>
+        </ol>
+      </section>
+
       <section class="card" id="sync">
         <h2>${icon('sync')} 5. Mon profil : retrouver mes données partout</h2>
         <ol>

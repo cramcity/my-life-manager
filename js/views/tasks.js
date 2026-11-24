@@ -56,7 +56,7 @@ function render(el, params, ctx) {
   const list = filtered();
   const counts = { done: S.all('tasks').filter(x => x.status === 'done').length, open: S.all('tasks').filter(x => x.status !== 'done').length };
   el.innerHTML = `
-    ${pageHead('Tâches', `<div class="seg seg-ic"><button class="${st.mode === 'list' ? 'on' : ''}" data-mode="list" title="Liste">${icon('list')}</button><button class="${st.mode === 'kanban' ? 'on' : ''}" data-mode="kanban" title="Tableau">${icon('kanban')}</button></div><button class="btn btn-primary" data-new>${icon('plus')}<span>Tâche</span></button>`, `${counts.open} non terminée${counts.open > 1 ? 's' : ''} · ${counts.done} terminée${counts.done > 1 ? 's' : ''}`)}
+    ${pageHead('Tâches', `<div class="seg seg-ic"><button class="${st.mode === 'list' ? 'on' : ''}" data-mode="list" title="Liste">${icon('list')}</button><button class="${st.mode === 'kanban' ? 'on' : ''}" data-mode="kanban" title="Tableau">${icon('kanban')}</button></div><a class="btn btn-ghost" href="#/recevoir" title="Ajouter une tâche reçue par lien">${icon('download')}<span>Recevoir</span></a><button class="btn btn-primary" data-new>${icon('plus')}<span>Tâche</span></button>`, `${counts.open} non terminée${counts.open > 1 ? 's' : ''} · ${counts.done} terminée${counts.done > 1 ? 's' : ''}`)}
     <div class="toolbar">
       <div class="tabs-scroll">${FILTERS.map(([v, l]) => `<button class="pill ${st.f === v ? 'on' : ''}" data-f="${v}">${l}</button>`).join('')}</div>
       <div class="filters">

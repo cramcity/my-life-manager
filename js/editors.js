@@ -1,5 +1,6 @@
 // Formulaires de création / modification partagés entre les écrans.
 import * as S from './store.js';
+import { shareTask } from './share.js';
 import { formModal, toast, todayStr, addDaysStr, hm2min, min2hm, choiceBox, confirmBox, nowHM, promptBox, esc } from './utils.js';
 import { PRIORITIES, STATUSES, catOptions, projectOptions } from './components.js';
 import { REPEATS, REMIND_CHOICES, remindersOf } from './recur.js';
@@ -24,6 +25,7 @@ export async function editTask(task = {}, defaults = {}) {
   ];
   const extra = [];
   if (!isNew) extra.push({ label: 'Supprimer', action: 'delete', danger: true, icon: 'trash' });
+  extra.push({ label: 'Partager', action: 'share', icon: 'share' });
   extra.push({ label: 'iPhone', action: 'iphone', icon: 'phone' });
   const r = await formModal({ title: isNew ? 'Nouvelle tâche' : 'Modifier la tâche', fields, extraButtons: extra });
   if (!r) return null;
@@ -40,6 +42,7 @@ export async function editTask(task = {}, defaults = {}) {
   const saved = await S.put('tasks', rec);
   S.log(isNew ? 'Tâche créée' : 'Tâche modifiée', saved.title, { type: 'task', projectId: saved.projectId });
   if (r.action === 'iphone') await sendTaskToIphone(saved);
+  else if (r.action === 'share') { toast(isNew ? 'Tâche ajoutée' : 'Tâche enregistrée'); await shareTask(saved); }
   else toast(isNew ? 'Tâche ajoutée' : 'Tâche enregistrée');
   return saved;
 }

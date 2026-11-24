@@ -45,6 +45,7 @@ export function taskRow(t, { showProject = true, actions = '' } = {}) {
         ${catChip(t.category)}
         ${showProject ? projChip(t.projectId) : ''}
         ${remindersOf(t).length && t.dueTime ? `<span class="muted-ic" title="Rappel">${icon('bell')}</span>` : ''}
+        ${t.sharedFrom ? `<span class="task-shared">${icon('share')} de ${esc(t.sharedFrom)}</span>` : ''}
       </div>
     </div>${actions ? `<div class="row-actions">${actions}</div>` : ''}
   </div>`;
