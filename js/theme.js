@@ -1,6 +1,6 @@
 import * as S from './store.js';
 const ACC = {
-  indigo: ['#4f46e5', '#818cf8'], bleu: ['#0284c7', '#38bdf8'], vert: ['#059669', '#34d399'],
+  indigo: ['#4f46e5', '#818cf8'], bleu: ['#2563eb', '#3d9bff'], vert: ['#059669', '#34d399'],
   ambre: ['#d97706', '#fbbf24'], rose: ['#db2777', '#f472b6'], ardoise: ['#475569', '#94a3b8'],
 };
 export function applyTheme() {

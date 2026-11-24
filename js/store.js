@@ -10,7 +10,7 @@ export const CATEGORY_COLORS = ['#6366f1', '#0ea5e9', '#8b5cf6', '#10b981', '#ef
 export const DEFAULT_SETTINGS = {
   name: '',
   theme: 'auto',
-  accent: 'indigo',
+  accent: 'bleu',
   autoLock: 5,
   snooze: 10,
   defaultSound: 'classique',
@@ -165,8 +165,8 @@ export const all = col => [...data[col].values()].filter(x => !x.deleted);
 export const get = (col, id) => { const x = data[col].get(id); return x && !x.deleted ? x : null; };
 export const raw = col => [...data[col].values()];
 
-export async function put(col, obj, { silent = false } = {}) {
-  const now = Date.now();
+export async function put(col, obj, { silent = false, ts } = {}) {
+  const now = ts || Date.now();
   const prev = obj.id ? data[col].get(obj.id) : null;
   const rec = { ...(prev || {}), ...obj, id: obj.id || uid(), createdAt: prev?.createdAt || obj.createdAt || now, updatedAt: now };
   delete rec.deleted;
@@ -234,27 +234,37 @@ export async function wipeAll() {
 }
 
 /* ---------- Données initiales ---------- */
+// Identifiants fixes et date très ancienne (ts: 1) : sur un nouvel appareil, la version enregistrée dans le compte
+// gagne toujours lors de la fusion, et les éléments de départ ne sont jamais dupliqués.
 export async function seedIfNeeded() {
   if (await metaGet('seeded')) return;
-  const nb = [['Général', '#6366f1'], ['Journal', '#10b981'], ['Idées', '#f59e0b']];
-  const nbs = [];
-  for (const [name, color] of nb) nbs.push(await put('notebooks', { name, color }, { silent: true }));
-  const projects = [
-    ['Formation de producteur exécutif', 'formation', '#8b5cf6', 'Suivi de ma formation de producteur exécutif : cours, devoirs, acquis.'],
-    ['Perform English avec Kayo', 'formation', '#0ea5e9', "Cours d'anglais avec Kayo : séances, vocabulaire, progrès."],
-    ['Sport et entraînement', 'projet', '#10b981', 'Programme d\'entraînement, séances et objectifs physiques.'],
-    ['CRAMCITY Entertainment', 'projet', '#f59e0b', 'Activités, projets artistiques et développement de CRAMCITY Entertainment.'],
-    ['CRAMCITY MANAGER', 'projet', '#ef4444', 'Développement et gestion de CRAMCITY MANAGER.'],
-    ['Création de contenu YouTube', 'projet', '#ec4899', 'Idées de vidéos, tournages, montage et publications.'],
-    ['Recherche d\'emploi et démarches professionnelles', 'projet', '#64748b', 'Candidatures, relances, entretiens et démarches.'],
-  ];
-  let i = 0;
-  for (const [name, kind, color, description] of projects) await put('projects', { name, kind, color, description, order: i++, archived: false }, { silent: true });
-  await put('notes', {
+  const o = { silent: true, ts: 1 };
+  const nb = [['seed-nb-general', 'Général', '#2563eb'], ['seed-nb-journal', 'Journal', '#10b981'], ['seed-nb-idees', 'Idées', '#f59e0b']];
+  for (const [id, name, color] of nb) if (!data.notebooks.has(id)) await put('notebooks', { id, name, color }, o);
+  if (!data.notes.has('seed-note-welcome')) await put('notes', {
+    id: 'seed-note-welcome',
     title: 'Bienvenue dans My Life Manager',
-    content: "Cette note est dans la catégorie « À ne pas oublier ».\n\n## Pour bien démarrer\n- [ ] Indiquer mon prénom dans Réglages\n- [ ] Installer l'application sur l'iPhone (Réglages › Guide iPhone)\n- [ ] Configurer les raccourcis iPhone pour des alarmes fiables\n- [ ] Activer le code de verrouillage\n- [ ] Faire une première sauvegarde\n\nAstuce : utilisez « - [ ] » pour créer une case à cocher et « - » pour une liste.",
-    notebookId: nbs[0].id, category: 'À ne pas oublier', pinned: true,
-  }, { silent: true });
-  await put('alarms', { time: '07:00', days: [1, 2, 3, 4, 5], title: 'Réveil', description: 'Bonne journée !', sound: 'classique', enabled: false }, { silent: true });
+    content: "Cette note est dans la catégorie « À ne pas oublier ».\n\n## Pour bien démarrer\n- [ ] Installer l'application sur l'iPhone (menu Guide iPhone)\n- [ ] Configurer les raccourcis iPhone pour des alarmes fiables\n- [ ] Créer mes projets\n- [ ] Activer le code de verrouillage (facultatif)\n\nAstuce : utilisez « - [ ] » pour créer une case à cocher et « - » pour une liste.",
+    notebookId: 'seed-nb-general', category: 'À ne pas oublier', pinned: true,
+  }, o);
+  if (!data.alarms.has('seed-alarm-reveil')) await put('alarms', { id: 'seed-alarm-reveil', time: '07:00', days: [1, 2, 3, 4, 5], title: 'Réveil', description: 'Bonne journée !', sound: 'classique', enabled: false }, o);
   await metaSet('seeded', true);
 }
+export const PRESET_PROJECTS = [
+  ['Formation de producteur exécutif', 'formation', '#8b5cf6', 'Suivi de ma formation de producteur exécutif : cours, devoirs, acquis.'],
+  ['Perform English avec Kayo', 'formation', '#0ea5e9', "Cours d'anglais avec Kayo : séances, vocabulaire, progrès."],
+  ['Sport et entraînement', 'projet', '#10b981', "Programme d'entraînement, séances et objectifs physiques."],
+  ['CRAMCITY Entertainment', 'projet', '#f59e0b', 'Activités, projets artistiques et développement de CRAMCITY Entertainment.'],
+  ['CRAMCITY MANAGER', 'projet', '#ef4444', 'Développement et gestion de CRAMCITY MANAGER.'],
+  ['Création de contenu YouTube', 'projet', '#ec4899', 'Idées de vidéos, tournages, montage et publications.'],
+  ["Recherche d'emploi et démarches professionnelles", 'projet', '#64748b', 'Candidatures, relances, entretiens et démarches.'],
+];
+export async function seedPresetProjects() {
+  let i = 0;
+  for (const [name, kind, color, description] of PRESET_PROJECTS) {
+    const id = 'seed-proj-' + i;
+    if (!data.projects.has(id)) await put('projects', { id, name, kind, color, description, order: i, archived: false }, { silent: true, ts: 1 });
+    i++;
+  }
+}
+export const hasRealData = () => COLS.some(c => c !== 'history' && raw(c).some(r => !String(r.id).startsWith('seed-')));

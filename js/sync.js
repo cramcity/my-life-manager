@@ -1,40 +1,59 @@
-// Synchronisation ordinateur ⇄ iPhone via Supabase (offre gratuite).
-// Les données sont chiffrées de bout en bout AVANT l'envoi : le serveur ne voit qu'un bloc illisible.
+// Comptes personnels et synchronisation (Supabase, offre gratuite).
+// Chaque personne a son profil (e-mail + mot de passe). Ses données sont chiffrées de bout en bout
+// avec une clé tirée de son mot de passe AVANT l'envoi : le serveur ne voit qu'un bloc illisible.
 import * as S from './store.js';
 import { debounce } from './utils.js';
+import { CLOUD } from './config.js';
 
-let cfg = null;      // {url, anonKey, email, accessToken, refreshToken, expiresAt, userId, passphrase, lastSync}
-let busy = false;
-let status = { state: 'off', msg: 'Non configurée' };
+let cfg = null;      // {email, accessToken, refreshToken, expiresAt, userId, passphrase, lastSync}
+let busy = false, again = false, loops = false;
+let status = { state: 'off', msg: 'Non connecté' };
 const statusListeners = new Set();
 export const onSyncStatus = f => { statusListeners.add(f); return () => statusListeners.delete(f); };
 const setStatus = (state, msg) => { status = { state, msg, at: Date.now() }; statusListeners.forEach(f => f(status)); };
 export const getStatus = () => status;
 export const getConfig = () => cfg;
+export const isLoggedIn = () => !!cfg?.accessToken;
 
 export async function initSync() {
   cfg = (await S.secureGet('sync')) || null;
-  if (cfg?.accessToken) {
-    setStatus('idle', 'Prête');
-    S.setWriteHook(autoPush);
-    syncNow().catch(() => { });
-    setInterval(() => { if (!document.hidden) syncNow().catch(() => { }); }, 5 * 60000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow().catch(() => { }); });
-    window.addEventListener('online', () => syncNow().catch(() => { }));
-  }
+  if (cfg && !cfg.accessToken) cfg = null;
+  if (cfg) { setStatus('idle', 'Prête'); startLoops(); syncNow().catch(() => { }); }
 }
-const autoPush = debounce(() => syncNow().catch(() => { }), 4000);
+function startLoops() {
+  S.setWriteHook(autoPush);
+  if (loops) return; loops = true;
+  setInterval(() => { if (!document.hidden) syncNow().catch(() => { }); }, 3 * 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow().catch(() => { }); });
+  window.addEventListener('online', () => syncNow().catch(() => { }));
+}
+const autoPush = debounce(() => syncNow().catch(() => { }), 3000);
 async function save() { await S.secureSet('sync', cfg); }
 
-const base = u => u.replace(/\/+$/, '');
 async function api(path, { method = 'GET', body, auth = true, headers = {} } = {}) {
-  const h = { apikey: cfg.anonKey, 'Content-Type': 'application/json', ...headers };
+  const h = { apikey: CLOUD.key, 'Content-Type': 'application/json', ...headers };
   if (auth) h.Authorization = `Bearer ${cfg.accessToken}`;
-  const r = await fetch(base(cfg.url) + path, { method, headers: h, body: body ? JSON.stringify(body) : undefined });
+  let r;
+  try { r = await fetch(CLOUD.url + path, { method, headers: h, body: body ? JSON.stringify(body) : undefined }); }
+  catch { throw new Error('Pas de connexion Internet. Réessayez quand vous êtes connecté.'); }
   const txt = await r.text();
   let j = null; try { j = txt ? JSON.parse(txt) : null; } catch { }
-  if (!r.ok) { const e = new Error(j?.msg || j?.error_description || j?.message || j?.error || `Erreur ${r.status}`); e.status = r.status; throw e; }
+  if (!r.ok) {
+    const raw = j?.msg || j?.error_description || j?.message || j?.error || '';
+    const e = new Error(frenchError(raw, j?.error_code || j?.code, r.status)); e.status = r.status; throw e;
+  }
   return j;
+}
+function frenchError(msg, code, status) {
+  const m = (msg || '').toLowerCase();
+  if (code === 'invalid_credentials' || m.includes('invalid login')) return 'E-mail ou mot de passe incorrect.';
+  if (code === 'user_already_exists' || m.includes('already registered')) return 'Un profil existe déjà avec cet e-mail : utilisez « Se connecter ».';
+  if (code === 'weak_password' || m.includes('password should')) return 'Mot de passe trop faible : 8 caractères minimum.';
+  if (code === 'email_address_invalid' || m.includes('invalid format') || m.includes('email address')) return 'Adresse e-mail invalide.';
+  if (code === 'over_request_rate_limit' || code === 'over_email_send_rate_limit' || status === 429) return 'Trop de tentatives. Patientez une minute puis réessayez.';
+  if (status === 401 || code === 'refresh_token_not_found' || m.includes('refresh token')) return 'Session expirée : reconnectez-vous (Réglages › Mon profil).';
+  if (status >= 500 || status === 503 || status === 540) return 'Le serveur est momentanément indisponible. Vos données restent sur l\'appareil ; réessayez plus tard.';
+  return msg || `Erreur ${status}`;
 }
 function applySession(j) {
   cfg.accessToken = j.access_token; cfg.refreshToken = j.refresh_token;
@@ -47,28 +66,45 @@ async function ensureToken() {
   applySession(j); await save();
 }
 
-export async function connect({ url, anonKey, email, password, passphrase, signup }) {
-  cfg = { url: url.trim(), anonKey: anonKey.trim(), email: email.trim(), passphrase, lastSync: 0 };
-  if (signup) {
-    const j = await api('/auth/v1/signup', { method: 'POST', auth: false, body: { email: cfg.email, password } });
-    if (!j?.access_token) { cfg = null; throw new Error("Compte créé. Confirmez l'e-mail reçu (ou désactivez « Confirm email » dans Supabase), puis connectez-vous."); }
-    applySession(j);
-  } else {
-    applySession(await api('/auth/v1/token?grant_type=password', { method: 'POST', auth: false, body: { email: cfg.email, password } }));
-  }
+// La clé de chiffrement est dérivée du mot de passe : le mot de passe lui-même n'est jamais enregistré.
+async function derivePassphrase(email, password) {
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('my-life-manager:' + email.toLowerCase()), iterations: 150000 }, base, 256);
+  return btoa(String.fromCharCode(...new Uint8Array(bits)));
+}
+
+/** Crée un profil (signup) ou se connecte. Ne synchronise pas : l'appelant appelle syncNow(). */
+export async function connect({ email, password, signup }) {
+  email = email.trim().toLowerCase();
+  const prev = cfg;
+  cfg = { email, lastSync: 0 };
+  try {
+    if (signup) {
+      const j = await api('/auth/v1/signup', { method: 'POST', auth: false, body: { email, password } });
+      if (!j?.access_token) {
+        // Supabase renvoie un faux succès si l'e-mail existe déjà (protection contre l'énumération)
+        throw new Error('Un profil existe peut-être déjà avec cet e-mail : essayez « Se connecter ».');
+      }
+      applySession(j);
+    } else {
+      applySession(await api('/auth/v1/token?grant_type=password', { method: 'POST', auth: false, body: { email, password } }));
+    }
+  } catch (e) { cfg = prev; throw e; }
+  cfg.passphrase = await derivePassphrase(email, password);
   await save();
-  S.setWriteHook(autoPush);
-  await syncNow();
+  startLoops();
 }
 export async function disconnect() {
   cfg = null; S.setWriteHook(null);
   await S.secureSet('sync', null);
-  setStatus('off', 'Non configurée');
+  setStatus('off', 'Non connecté');
 }
 
 export async function syncNow() {
-  if (!cfg?.accessToken || busy) return;
-  if (!navigator.onLine) { setStatus('offline', 'Hors connexion — synchronisation au retour du réseau'); return; }
+  if (!cfg?.accessToken) return;
+  if (busy) { again = true; return; }
+  if (!navigator.onLine) { setStatus('offline', 'Hors connexion — envoi au retour du réseau'); return; }
   busy = true; setStatus('syncing', 'Synchronisation…');
   try {
     await ensureToken();
@@ -76,7 +112,7 @@ export async function syncNow() {
     if (rows?.length) {
       let remote;
       try { remote = await S.decryptWithPassword(cfg.passphrase, JSON.parse(rows[0].data)); }
-      catch { throw new Error('Phrase secrète de synchronisation incorrecte pour les données en ligne.'); }
+      catch { throw new Error('Impossible de déchiffrer les données du compte.'); }
       await S.mergeData(remote);
     }
     const blob = await S.encryptWithPassword(cfg.passphrase, S.exportData());
@@ -84,16 +120,11 @@ export async function syncNow() {
     cfg.lastSync = Date.now(); await save();
     setStatus('ok', 'Synchronisé');
   } catch (e) {
-    setStatus('error', e.message || 'Échec de la synchronisation');
+    if (e.status === 401 || e.status === 400 && /session/i.test(e.message)) setStatus('error', 'Session expirée — reconnectez-vous');
+    else setStatus(navigator.onLine ? 'error' : 'offline', e.message || 'Échec de la synchronisation');
     throw e;
-  } finally { busy = false; }
+  } finally {
+    busy = false;
+    if (again) { again = false; setTimeout(() => syncNow().catch(() => { }), 500); }
+  }
 }
-
-export const SETUP_SQL = `create table if not exists public.vaults (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  data text not null,
-  updated_at timestamptz not null default now()
-);
-alter table public.vaults enable row level security;
-create policy "Chacun son coffre" on public.vaults
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);`;

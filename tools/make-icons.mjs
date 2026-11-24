@@ -22,7 +22,7 @@ function png(w, h, rgba) {
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
 }
 const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-const C1 = hex('#4338ca'), C2 = hex('#7c3aed'), BG = hex('#0d1117'), W = [255, 255, 255];
+const C1 = hex('#02040a'), C2 = hex('#0b2a6f'), BG = hex('#02040a'), W = hex('#3d9bff'); // bleu nuit → noir, symbole bleu vif
 const clamp = v => Math.max(0, Math.min(1, v));
 const sdRound = (px, py, cx, cy, hw, hh, r) => { const qx = Math.abs(px - cx) - (hw - r), qy = Math.abs(py - cy) - (hh - r); return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r; };
 const sdSeg = (px, py, ax, ay, bx, by) => { const pax = px - ax, pay = py - ay, bax = bx - ax, bay = by - ay; const h = clamp((pax * bax + pay * bay) / (bax * bax + bay * bay)); return Math.hypot(pax - bax * h, pay - bay * h); };
@@ -39,7 +39,7 @@ function drawLogo(buf, W0, ox, oy, size, { full = false, glyph = 1 } = {}) {
     const dBg = full ? -1 : sdRound(px, py, cx, cy, size / 2, size / 2, size * 0.225);
     const aBg = clamp(0.5 - dBg);
     if (aBg <= 0) continue;
-    const t = clamp(((px - ox) + (py - oy)) / (2 * size));
+    const t = clamp(((px - ox) + (oy + size - py)) / (2 * size)) ** 1.4; // noir en haut à gauche, bleu nuit en bas à droite
     let col = C1.map((v, k) => v + (C2[k] - v) * t);
     // anneau ouvert (arc) autour de la coche
     const ang = Math.atan2(py - cy, px - cx);

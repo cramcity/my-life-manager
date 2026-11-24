@@ -4,7 +4,8 @@ import { $, esc, pad, toast, openModal, debounce, isIOS, isStandalone, todayStr 
 import { icon } from './icons.js';
 import { applyTheme } from './theme.js';
 import { startEngine, unlockAudio } from './alarm-engine.js';
-import { initSync, onSyncStatus } from './sync.js';
+import { initSync, onSyncStatus, isLoggedIn } from './sync.js';
+import { authScreen } from './auth.js';
 import { editTask, editEvent, editAlarm, newNote, stopTimer } from './editors.js';
 import dashboard from './views/dashboard.js';
 import calendar from './views/calendar.js';
@@ -197,11 +198,15 @@ async function boot() {
     startEngine(); // les alarmes fonctionnent même sur l'écran de verrouillage
     if (await S.lockInfo()) await lockScreen();
     await S.loadAll();
+    await initSync();
+    document.getElementById('splash')?.remove();
+    // Premier lancement sur cet appareil : créer son profil ou se connecter pour récupérer ses données
+    let skip = false; try { skip = !!localStorage.getItem('mlm:noAccount'); } catch { }
+    if (!isLoggedIn() && !skip && !S.hasRealData()) await authScreen();
     await S.seedIfNeeded();
     applyTheme();
     navigator.storage?.persist?.().catch(() => { });
     shell();
-    await initSync();
     onSyncStatus(st => { const d = $('#sync-dot'); if (d) d.innerHTML = `<i class="sd sd-${st.state}"></i>${esc(st.msg)}`; });
     S.onChange((col, source) => scheduleRerender());
     modalObserver.observe(document.body, { childList: true });

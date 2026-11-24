@@ -5,6 +5,7 @@ import { pageHead } from '../components.js';
 import { SOUNDS, notifPermission, requestNotif, previewSound } from '../alarm-engine.js';
 import { exportAllICS } from '../ics.js';
 import * as Sync from '../sync.js';
+import { authScreen, logout } from '../auth.js';
 import { applyTheme } from '../theme.js';
 
 const ACCENTS = [['indigo', '#4f46e5'], ['bleu', '#0284c7'], ['vert', '#059669'], ['ambre', '#d97706'], ['rose', '#db2777'], ['ardoise', '#475569']];
@@ -65,19 +66,13 @@ async function render(el, params, ctx) {
       </div>
       <p class="muted small">L'import <b>fusionne</b> intelligemment (la modification la plus récente gagne) : vous pouvez aussi l'utiliser pour transférer vos données entre l'ordinateur et l'iPhone sans compte en ligne.</p>`)}
 
-    ${section('sync', 'sync', 'Synchronisation ordinateur ⇄ iPhone', cfg ? `
-      <div class="sync-state st-${sync.state}">${icon(sync.state === 'error' ? 'alert' : sync.state === 'ok' ? 'check' : 'sync')}<div><b>${esc(sync.msg)}</b><small>${esc(cfg.email)} · dernière synchro ${cfg.lastSync ? timeAgo(cfg.lastSync) : 'jamais'}</small></div></div>
-      <div class="row wrap"><button class="btn btn-primary" data-sync-now>${icon('sync')} Synchroniser maintenant</button><button class="btn btn-ghost-danger" data-sync-off>${icon('logout')} Déconnecter cet appareil</button></div>
-      <p class="muted small">Synchronisation automatique à chaque modification, à l'ouverture et toutes les 5 minutes. Les données sont chiffrées avec votre phrase secrète avant l'envoi.</p>` : `
-      <p class="small">Gratuit avec <b>Supabase</b> (offre gratuite, sans carte bancaire). Vos données sont <b>chiffrées de bout en bout</b> avec une phrase secrète que vous seul connaissez. Configuration unique : voir le <a class="link" href="#/guide#sync">guide pas à pas</a>.</p>
-      <form class="form-grid" data-sync-form>
-        <label class="field full"><span>URL du projet Supabase</span><input class="input" name="url" placeholder="https://xxxx.supabase.co" required></label>
-        <label class="field full"><span>Clé publique (anon / publishable key)</span><input class="input" name="anonKey" placeholder="eyJhbGciOi… ou sb_publishable_…" required></label>
-        <label class="field"><span>E-mail</span><input class="input" type="email" name="email" autocomplete="username" required></label>
-        <label class="field"><span>Mot de passe du compte</span><input class="input" type="password" name="password" autocomplete="current-password" required minlength="6"></label>
-        <label class="field full"><span>Phrase secrète de chiffrement (identique sur tous vos appareils)</span><input class="input" type="password" name="passphrase" required minlength="8" placeholder="Au moins 8 caractères — ne la perdez pas"></label>
-        <div class="row wrap full"><button class="btn btn-primary" type="submit" data-mode="login">${icon('cloud')} Se connecter</button><button class="btn" type="submit" data-mode="signup">Créer le compte</button><button class="btn btn-ghost" type="button" data-sql>${icon('copy')} Copier le script SQL</button></div>
-      </form>`)}
+    ${section('sync', 'cloud', 'Mon profil', cfg ? `
+      <div class="sync-state st-${sync.state}">${icon(sync.state === 'error' ? 'alert' : sync.state === 'ok' ? 'check' : 'sync')}<div><b>${esc(cfg.email)}</b><small>${esc(sync.msg)} · dernière synchro ${cfg.lastSync ? timeAgo(cfg.lastSync) : 'jamais'}</small></div></div>
+      <div class="row wrap"><button class="btn btn-primary" data-sync-now>${icon('sync')} Synchroniser maintenant</button><button class="btn btn-ghost-danger" data-logout>${icon('logout')} Se déconnecter</button></div>
+      <p class="muted small">Vos données sont enregistrées dans votre profil automatiquement à chaque modification. Connectez-vous avec le même e-mail et mot de passe sur un autre appareil pour tout retrouver. Elles sont chiffrées avec votre mot de passe avant l'envoi : personne d'autre ne peut les lire.</p>
+      <p class="muted small">Se déconnecter envoie vos dernières modifications puis efface les données de cet appareil (pratique pour changer de profil).</p>` : `
+      <p class="small">Vous utilisez l'app <b>sans profil</b> : vos données restent uniquement sur cet appareil. Créez un profil (gratuit) ou connectez-vous pour les retrouver sur tous vos appareils ; vos données actuelles y seront ajoutées.</p>
+      <div class="row wrap"><button class="btn btn-primary" data-auth="signup">${icon('check')} Créer mon profil</button><button class="btn" data-auth="login">${icon('cloud')} Se connecter</button></div>`)}
 
     ${section('categories', 'grid', 'Catégories (tâches et agenda)', `
       <div class="cat-edit">${s.categories.map((c, i) => `<div class="cat-line"><input type="color" value="${c.color}" data-cat-color="${i}"><input class="input input-sm" value="${esc(c.name)}" data-cat-name="${i}"><button class="icon-btn sm" data-cat-del="${i}" title="Supprimer">${icon('trash')}</button></div>`).join('')}</div>
@@ -87,7 +82,7 @@ async function render(el, params, ctx) {
       <p class="small">Données enregistrées dans la base IndexedDB de l'appareil (conservée après fermeture). Stockage durable : <b>${persisted ? 'accordé ✅' : 'non garanti'}</b>${est ? ` · utilisé : ${(est.usage / 1048576).toFixed(1)} Mo` : ''}.</p>
       <p class="muted small">Sur iPhone, installez l'app sur l'écran d'accueil : Safari peut sinon effacer les données d'un site non visité pendant 7 jours. Faites des sauvegardes régulières ou activez la synchronisation.</p>
       <div class="row wrap">${!persisted && navigator.storage?.persist ? '<button class="btn btn-sm" data-persist>Demander le stockage durable</button>' : ''}<button class="btn btn-sm btn-ghost-danger" data-wipe>${icon('trash')} Effacer toutes les données de cet appareil</button></div>
-      <p class="muted small mt">My Life Manager · version 1.0 · fonctionne hors connexion</p>`)}
+      <p class="muted small mt">My Life Manager · version 1.1 · fonctionne hors connexion</p>`)}
     </div>`;
 
   /* ---------- Gestion des événements ---------- */
@@ -126,8 +121,12 @@ async function render(el, params, ctx) {
     else if (b.hasAttribute('data-lock-off')) { if (await confirmBox('Désactiver le code ? Les données ne seront plus chiffrées sur cet appareil.', { ok: 'Désactiver', danger: true })) { await S.disableLock(); toast('Code désactivé'); ctx.rerender(); } }
     else if (b.hasAttribute('data-lock-now')) location.reload();
     else if (b.hasAttribute('data-sync-now')) { try { await Sync.syncNow(); toast('Synchronisé ✅'); } catch (err) { toast(err.message, { type: 'warn', timeout: 7000 }); } ctx.rerender(); }
-    else if (b.hasAttribute('data-sync-off')) { if (await confirmBox('Déconnecter la synchronisation sur cet appareil ? Les données locales sont conservées.', { ok: 'Déconnecter' })) { await Sync.disconnect(); await S.setSettings({ syncOn: false }, { silent: true }); ctx.rerender(); } }
-    else if (b.hasAttribute('data-sql')) { try { await navigator.clipboard.writeText(Sync.SETUP_SQL); toast('Script SQL copié'); } catch { openModal({ title: 'Script SQL', body: `<pre class="code">${esc(Sync.SETUP_SQL)}</pre>` }); } }
+    else if (b.hasAttribute('data-logout')) {
+      if (!await confirmBox('Se déconnecter ? Vos données seront envoyées dans votre profil puis effacées de cet appareil. Vous les retrouverez en vous reconnectant.', { ok: 'Se déconnecter' })) return;
+      b.disabled = true; b.textContent = 'Envoi des données…';
+      try { await logout(); } catch (err) { toast(err.message, { type: 'warn', timeout: 9000 }); b.disabled = false; ctx.rerender(); }
+    }
+    else if (b.dataset.auth) { const r = await authScreen({ allowSkip: false, allowClose: true, mode: b.dataset.auth }); if (r) ctx.rerender(); }
     else if (b.hasAttribute('data-cat-add')) { const name = await promptBox('Nouvelle catégorie', { label: 'Nom' }); if (name) { await S.setSettings({ categories: [...S.getSettings().categories, { id: 'c' + Date.now().toString(36), name, color: S.CATEGORY_COLORS[S.getSettings().categories.length % 10] }] }); } }
     else if (b.dataset.catDel != null && b.hasAttribute('data-cat-del')) { const cats = [...S.getSettings().categories]; const [c] = cats.splice(+b.dataset.catDel, 1); if (await confirmBox(`Supprimer la catégorie « ${c.name} » ?`, { ok: 'Supprimer', danger: true })) await S.setSettings({ categories: cats }); }
     else if (b.hasAttribute('data-persist')) { const ok = await navigator.storage.persist(); toast(ok ? 'Stockage durable accordé' : 'Refusé par le navigateur (installez l\'app sur l\'écran d\'accueil)'); ctx.rerender(); }
@@ -137,17 +136,6 @@ async function render(el, params, ctx) {
       if (w !== 'EFFACER') return;
       await S.wipeAll(); localStorage.clear(); location.hash = '#/'; location.reload();
     }
-  });
-  el.addEventListener('submit', async e => {
-    const f = e.target.closest('[data-sync-form]'); if (!f) return;
-    e.preventDefault();
-    const v = Object.fromEntries(new FormData(f).entries());
-    if (!/^https:\/\/.+/.test(v.url)) { toast("L'URL doit commencer par https://", { type: 'warn' }); return; }
-    if ((v.passphrase || '').length < 8) { toast('Phrase secrète : 8 caractères minimum', { type: 'warn' }); return; }
-    const signup = e.submitter?.dataset.mode === 'signup';
-    const btn = e.submitter; btn.disabled = true; btn.textContent = 'Connexion…';
-    try { await Sync.connect({ ...v, signup }); await S.setSettings({ syncOn: true }, { silent: true }); toast('Synchronisation activée ✅'); ctx.rerender(); }
-    catch (err) { toast(err.message, { type: 'warn', timeout: 9000 }); btn.disabled = false; btn.textContent = signup ? 'Créer le compte' : 'Se connecter'; }
   });
 }
 

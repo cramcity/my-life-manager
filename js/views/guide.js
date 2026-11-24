@@ -1,7 +1,6 @@
 import { icon } from '../icons.js';
 import { pageHead } from '../components.js';
 import { isIOS, isStandalone, esc, toast } from '../utils.js';
-import { SETUP_SQL } from '../sync.js';
 import * as S from '../store.js';
 
 export default {
@@ -73,24 +72,17 @@ export default {
       </section>
 
       <section class="card" id="sync">
-        <h2>${icon('sync')} 5. Synchroniser l'ordinateur et l'iPhone (gratuit)</h2>
-        <h3>Option simple : par fichier (sans compte)</h3>
-        <p>Réglages › <b>Sauvegarder</b> sur un appareil, enregistrez dans iCloud Drive ou OneDrive, puis sur l'autre appareil Réglages › <b>Restaurer / importer</b> › <b>Fusionner</b>. La version la plus récente de chaque élément est conservée.</p>
-        <h3>Option automatique : Supabase (offre gratuite)</h3>
+        <h2>${icon('sync')} 5. Mon profil : retrouver mes données partout</h2>
         <ol>
-          <li>Créez un compte gratuit sur <b>supabase.com</b> (aucune carte bancaire) puis <b>New project</b> (région Europe, mot de passe de base de données au choix).</li>
-          <li>Menu <b>SQL Editor</b> › <b>New query</b> › collez le script ci-dessous › <b>Run</b>.</li>
-          <li>Menu <b>Authentication › Sign In / Providers › Email</b> : désactivez <b>« Confirm email »</b> (ou confirmez l'e-mail reçu après création du compte).</li>
-          <li><b>Project Settings › API</b> (ou « API Keys ») : copiez l'<b>URL du projet</b> et la clé publique <b>anon / publishable</b>.</li>
-          <li>Dans l'app sur l'ordinateur : <a class="link" href="#/reglages#sync">Réglages › Synchronisation</a> › remplissez › <b>Créer le compte</b>.</li>
-          <li>Sur l'iPhone : mêmes informations (même phrase secrète) › <b>Se connecter</b>.</li>
+          <li>Au premier lancement, touchez <b>Créer mon profil</b> : prénom, e-mail et mot de passe (8 caractères minimum).</li>
+          <li>Sur un autre appareil (ordinateur, autre iPhone), ouvrez l'app et touchez <b>Se connecter</b> avec le même e-mail et mot de passe : toutes vos données reviennent.</li>
+          <li>Chaque modification est envoyée automatiquement. Sans réseau, l'app continue de fonctionner et envoie tout au retour de la connexion.</li>
+          <li>Chaque personne a son propre profil : personne ne voit les données d'un autre.</li>
+          <li>Pour prêter l'appareil ou changer de profil : Réglages › Mon profil › <b>Se déconnecter</b> (les données sont d'abord envoyées dans le compte, puis effacées de l'appareil).</li>
         </ol>
-        <pre class="code" id="sql">${esc(SETUP_SQL)}</pre>
-        <button class="btn btn-sm" data-copy-sql>${icon('copy')} Copier le script</button>
-        <p class="muted">Sécurité : vos données sont chiffrées sur l'appareil avec la phrase secrète avant l'envoi (AES-256) ; Supabase ne stocke qu'un bloc illisible, protégé en plus par votre compte. Un projet gratuit inactif pendant 7 jours est mis en pause : réactivez-le depuis le tableau de bord Supabase (rien n'est perdu ; vos données restent aussi sur vos appareils).</p>
+        <p class="muted">Sécurité : vos données sont chiffrées sur l'appareil avec une clé tirée de votre mot de passe (AES-256) avant l'envoi. Le serveur ne stocke qu'un bloc illisible. Conséquence : <b>un mot de passe oublié ne peut pas être réinitialisé</b> sans perdre les données en ligne ; notez-le en lieu sûr et faites de temps en temps une sauvegarde fichier.</p>
       </section>
     </div>`;
-    el.querySelector('[data-copy-sql]').onclick = async () => { try { await navigator.clipboard.writeText(SETUP_SQL); toast('Script copié'); } catch { toast('Sélectionnez le texte pour le copier'); } };
     const anchor = location.hash.split('#')[2];
     if (anchor) requestAnimationFrame(() => el.querySelector('#' + anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }

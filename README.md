@@ -62,15 +62,21 @@ Alternatives gratuites équivalentes : **Cloudflare Pages** (accepte les dépôt
 
 **Mettre à jour l'app** : renvoyez les fichiers modifiés sur GitHub ; l'app installée se met à jour toute seule à l'ouverture suivante.
 
-## Synchronisation Supabase (facultative, gratuite)
+## Profils et synchronisation
 
-Pas à pas complet dans l'app : *Guide iPhone › 5. Synchronisation*. En résumé : créer un projet gratuit sur supabase.com, exécuter le script SQL fourni (bouton « Copier le script SQL » dans Réglages), désactiver « Confirm email », puis saisir l'URL et la clé publique dans *Réglages › Synchronisation* sur chaque appareil avec **la même phrase secrète**.
+- Adresse de l'app : **https://cramcity.github.io/my-life-manager/**
+- Au premier lancement, chaque personne **crée son profil** (prénom, e-mail, mot de passe) ou **se connecte** : ses données reviennent sur n'importe quel appareil.
+- Comptes gérés par **Supabase** (offre gratuite, projet `my-life-manager`, organisation « cramcity's Org »). Table `vaults` : une ligne par profil, protégée par RLS (chacun ne lit et n'écrit que la sienne).
+- Les données sont **chiffrées de bout en bout** (AES-256, clé dérivée du mot de passe par PBKDF2) avant l'envoi. Le mot de passe n'est jamais enregistré. Un mot de passe oublié ne peut pas être réinitialisé sans perdre les données en ligne.
+- Configuration dans `js/config.js` (la clé « publishable » est publique par conception).
+- Un projet Supabase gratuit sans aucune activité pendant 7 jours est mis en pause : il suffit de le relancer depuis supabase.com (rien n'est perdu ; les données restent aussi sur les appareils).
 
 ## Développement local
 
 ```
 node tools/serve.mjs        # http://localhost:5178
 node tools/make-icons.mjs   # régénère icônes et écrans de lancement
+node tools/mock-cloud.mjs   # http://127.0.0.1:5181 — test des profils avec un faux serveur local
 ```
 
 Raccourcis clavier sur ordinateur : **N** nouvelle note · **T** nouvelle tâche · **A** nouvelle activité.
