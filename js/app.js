@@ -190,6 +190,7 @@ function installHint() {
 
 /* ---------- Démarrage ---------- */
 async function boot() {
+  registerSW(); // dès le démarrage : hors connexion et mises à jour, même avant la connexion au profil
   try {
     await S.openDB();
     await S.loadPlain();
@@ -213,7 +214,6 @@ async function boot() {
     window.addEventListener('hashchange', () => route());
     await route();
     setInterval(updateClocks, 1000);
-    registerSW();
     installHint();
     // Raccourcis clavier (ordinateur)
     document.addEventListener('keydown', e => {
