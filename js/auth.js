@@ -30,7 +30,6 @@ export function authScreen({ allowSkip = true, allowClose = false, mode = 'signu
           <input class="input" name="email" type="email" autocomplete="${up ? 'email' : 'username'}" inputmode="email" autocapitalize="off" placeholder="E-mail" required>
           <input class="input" name="password" type="password" autocomplete="${up ? 'new-password' : 'current-password'}" placeholder="Mot de passe${up ? ' (8 caractères min.)' : ''}" required minlength="8">
           ${up ? `<input class="input" name="password2" type="password" autocomplete="new-password" placeholder="Confirmer le mot de passe" required>
-          <label class="check-field auth-check"><input type="checkbox" name="presets"> <span>Ajouter les espaces projets prédéfinis (Formation producteur exécutif, Perform English, Sport, CRAMCITY, YouTube, Recherche d'emploi)</span></label>
           <p class="auth-warn">${icon('alert')} Notez bien votre mot de passe : vos données sont chiffrées avec lui. S'il est oublié, elles ne peuvent pas être récupérées.</p>` : ''}
           <p class="lock-err" hidden></p>
           <button class="btn btn-primary btn-lg" type="submit">${up ? icon('check') + ' Créer mon profil' : icon('cloud') + ' Se connecter'}</button>
@@ -63,7 +62,6 @@ export function authScreen({ allowSkip = true, allowClose = false, mode = 'signu
         const fresh = up && !existing; // vrai nouveau profil (sinon : profil existant, on récupère ses données)
         if (fresh) {
           await S.seedIfNeeded();
-          if (v.presets) await S.seedPresetProjects();
           await S.setSettings({ name: v.name.trim(), syncOn: true }, { silent: true });
         } else {
           await Sync.syncNow();            // récupère les données du compte et les fusionne

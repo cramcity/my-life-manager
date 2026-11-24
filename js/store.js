@@ -250,21 +250,16 @@ export async function seedIfNeeded() {
   if (!data.alarms.has('seed-alarm-reveil')) await put('alarms', { id: 'seed-alarm-reveil', time: '07:00', days: [1, 2, 3, 4, 5], title: 'Réveil', description: 'Bonne journée !', sound: 'classique', enabled: false }, o);
   await metaSet('seeded', true);
 }
-export const PRESET_PROJECTS = [
-  ['Formation de producteur exécutif', 'formation', '#8b5cf6', 'Suivi de ma formation de producteur exécutif : cours, devoirs, acquis.'],
-  ['Perform English avec Kayo', 'formation', '#0ea5e9', "Cours d'anglais avec Kayo : séances, vocabulaire, progrès."],
-  ['Sport et entraînement', 'projet', '#10b981', "Programme d'entraînement, séances et objectifs physiques."],
-  ['CRAMCITY Entertainment', 'projet', '#f59e0b', 'Activités, projets artistiques et développement de CRAMCITY Entertainment.'],
-  ['CRAMCITY MANAGER', 'projet', '#ef4444', 'Développement et gestion de CRAMCITY MANAGER.'],
-  ['Création de contenu YouTube', 'projet', '#ec4899', 'Idées de vidéos, tournages, montage et publications.'],
-  ["Recherche d'emploi et démarches professionnelles", 'projet', '#64748b', 'Candidatures, relances, entretiens et démarches.'],
+// Idées de projets proposées à chacun (génériques) : chaque personne crée ensuite ses propres espaces.
+export const PROJECT_SUGGESTIONS = [
+  { name: 'Travail', kind: 'projet', color: '#0ea5e9', emoji: '💼', description: 'Missions, réunions et dossiers en cours.' },
+  { name: 'Études / formation', kind: 'formation', color: '#8b5cf6', emoji: '🎓', description: 'Cours, devoirs, révisions et ce que j\'apprends.' },
+  { name: 'Sport', kind: 'projet', color: '#10b981', emoji: '💪', description: 'Séances, programme et objectifs physiques.' },
+  { name: 'Santé', kind: 'projet', color: '#ef4444', emoji: '❤️', description: 'Rendez-vous, traitements et bien-être.' },
+  { name: 'Finances', kind: 'projet', color: '#f59e0b', emoji: '💰', description: 'Budget, factures et épargne.' },
+  { name: 'Maison', kind: 'projet', color: '#64748b', emoji: '🏠', description: 'Courses, ménage, travaux et démarches.' },
+  { name: 'Projet personnel', kind: 'projet', color: '#ec4899', emoji: '✨', description: 'Un projet qui me tient à cœur.' },
+  { name: 'Recherche d\'emploi', kind: 'projet', color: '#14b8a6', emoji: '🔎', description: 'Candidatures, relances et entretiens.' },
+  { name: 'Voyage', kind: 'projet', color: '#a855f7', emoji: '✈️', description: 'Préparatifs, réservations et idées.' },
 ];
-export async function seedPresetProjects() {
-  let i = 0;
-  for (const [name, kind, color, description] of PRESET_PROJECTS) {
-    const id = 'seed-proj-' + i;
-    if (!data.projects.has(id)) await put('projects', { id, name, kind, color, description, order: i, archived: false }, { silent: true, ts: 1 });
-    i++;
-  }
-}
 export const hasRealData = () => COLS.some(c => c !== 'history' && raw(c).some(r => !String(r.id).startsWith('seed-')));

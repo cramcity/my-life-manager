@@ -32,7 +32,7 @@ createServer(async (req, res) => {
     if (!uid) return json(res, 401, { message: 'JWT expired' });
     if (p === '/rest/v1/vaults' && req.method === 'GET') { const want = (url.searchParams.get('user_id') || '').replace('eq.', ''); return json(res, 200, want === uid && vaults.has(uid) ? [vaults.get(uid)] : []); }
     if (p === '/rest/v1/vaults' && req.method === 'POST') { const b = await body(req); if (b.user_id !== uid) return json(res, 403, { message: 'RLS' }); vaults.set(uid, { data: b.data, updated_at: b.updated_at }); return json(res, 201); }
-    if (p === '/debug') return json(res, 200, { users: [...users.keys()], vaults: [...vaults.entries()].map(([k, v]) => ({ k, len: v.data.length, plaintextLeak: /Courses|Bienvenue|CRAMCITY/.test(v.data) })) });
+    if (p === '/debug') return json(res, 200, { users: [...users.keys()], vaults: [...vaults.entries()].map(([k, v]) => ({ k, len: v.data.length, plaintextLeak: /Courses|Bienvenue|Projet/.test(v.data) })) });
     return json(res, 404, {});
   }
   try {

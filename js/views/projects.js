@@ -16,12 +16,22 @@ function stats(p) {
   return { open: tasks.length - done, done, pct: tasks.length ? Math.round(done / tasks.length * 100) : 0, min, notes: S.all('notes').filter(n => n.projectId === p.id).length, goals: S.all('goals').filter(g => g.projectId === p.id && goalState(g) === 'active').length };
 }
 
+function suggestions(projects) {
+  const have = new Set(S.all('projects').map(p => p.name.toLowerCase()));
+  const list = S.PROJECT_SUGGESTIONS.map((x, i) => ({ ...x, i })).filter(x => !have.has(x.name.toLowerCase()));
+  if (!list.length || projects.length >= 6) return '';
+  return `<div class="card suggest-card"><div class="card-head"><h2>${icon('sparkle')} ${projects.length ? 'Ajouter un espace' : 'Créez vos espaces'}</h2></div>
+    <p class="muted small">Touchez une idée pour la créer (vous pourrez changer le nom), ou « Projet » pour en créer un à votre façon.</p>
+    <div class="chips-pick">${list.map(x => `<button class="rem-chip" data-suggest="${x.i}">${x.emoji} ${esc(x.name)}</button>`).join('')}</div></div>`;
+}
+
 function list(el, ctx) {
   const showArch = ctx.params.get('archives') === '1';
   const projects = S.all('projects').filter(p => !!p.archived === showArch).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
   const timer = S.getSettings().timer;
   el.innerHTML = `
     ${pageHead('Projets et formations', `<a class="btn btn-ghost" href="#/projets${showArch ? '' : '?archives=1'}">${showArch ? 'Projets actifs' : 'Archives'}</a><button class="btn btn-primary" data-new>${icon('plus')}<span>Projet</span></button>`, 'Chaque espace regroupe ses notes, tâches, objectifs, échéances et son historique.')}
+    ${showArch ? '' : suggestions(projects)}
     <div class="proj-grid">
       ${projects.map(p => {
         const s = stats(p);
@@ -34,7 +44,11 @@ function list(el, ctx) {
         </a>`;
       }).join('') || empty('folder', showArch ? 'Aucun projet archivé.' : 'Aucun projet.')}
     </div>`;
-  el.addEventListener('click', e => { if (e.target.closest('[data-new]')) editProject().then(p => p && ctx.go('#/projets/' + p.id)); });
+  el.addEventListener('click', e => {
+    if (e.target.closest('[data-new]')) editProject().then(p => p && ctx.go('#/projets/' + p.id));
+    const sg = e.target.closest('[data-suggest]');
+    if (sg) { const { emoji, ...pr } = S.PROJECT_SUGGESTIONS[+sg.dataset.suggest]; editProject(pr).then(p => p && ctx.go('#/projets/' + p.id)); }
+  });
 }
 
 function detail(el, ctx, p) {
