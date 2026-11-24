@@ -27,7 +27,15 @@ function startLoops() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow().catch(() => { }); });
   window.addEventListener('online', () => syncNow().catch(() => { }));
 }
-const autoPush = debounce(() => syncNow().catch(() => { }), 3000);
+const sendLater = debounce(() => syncNow().catch(() => { }), 3000);
+// Chaque modification locale est numérotée : on sait ainsi s'il reste quelque chose à envoyer, même après fermeture de l'app.
+function autoPush() {
+  if (!cfg) return;
+  cfg.dirtySeq = (cfg.dirtySeq || 0) + 1;
+  save().catch(() => { });
+  sendLater();
+}
+const hasLocalChanges = () => (cfg.dirtySeq || 0) > (cfg.pushedSeq || 0);
 async function save() { await S.secureSet('sync', cfg); }
 
 async function api(path, { method = 'GET', body, auth = true, headers = {} } = {}) {
@@ -115,6 +123,8 @@ export async function disconnect() {
   setStatus('off', 'Non connecté');
 }
 
+// Synchronisation économe : on vérifie d'abord la date de la dernière version en ligne (quelques octets).
+// Le profil complet n'est téléchargé que s'il a changé ailleurs, et envoyé que s'il y a des modifications ici.
 export async function syncNow() {
   if (!cfg?.accessToken) return;
   if (busy) { again = true; return; }
@@ -122,15 +132,25 @@ export async function syncNow() {
   busy = true; setStatus('syncing', 'Synchronisation…');
   try {
     await ensureToken();
-    const rows = await api(`/rest/v1/vaults?select=data,updated_at&user_id=eq.${cfg.userId}`);
-    if (rows?.length) {
-      let remote;
-      try { remote = await S.decryptWithPassword(cfg.passphrase, JSON.parse(rows[0].data)); }
-      catch { throw new Error('Impossible de déchiffrer les données du compte.'); }
-      await S.mergeData(remote);
+    const me = `user_id=eq.${cfg.userId}`;
+    let done = false;
+    for (let attempt = 0; attempt < 4 && !done; attempt++) {
+      const head = await api(`/rest/v1/vaults?select=updated_at&${me}`);
+      const remoteAt = head?.[0]?.updated_at || null;
+      if (remoteAt && remoteAt !== cfg.remoteAt) {
+        const rows = await api(`/rest/v1/vaults?select=data,updated_at&${me}`);
+        if (rows?.length) {
+          let remote;
+          try { remote = await S.decryptWithPassword(cfg.passphrase, JSON.parse(rows[0].data)); }
+          catch { throw new Error('Impossible de déchiffrer les données du compte.'); }
+          await S.mergeData(remote);
+          cfg.remoteAt = rows[0].updated_at;
+        }
+      }
+      if (!remoteAt) cfg.remoteAt = null;
+      if (remoteAt && !hasLocalChanges()) { done = true; break; }
+      done = await pushBlob(); // false = un autre appareil a écrit entre-temps : on recommence
     }
-    const blob = await S.encryptWithPassword(cfg.passphrase, S.exportData());
-    await api('/rest/v1/vaults?on_conflict=user_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: { user_id: cfg.userId, data: JSON.stringify(blob), updated_at: new Date().toISOString() } });
     cfg.lastSync = Date.now(); await save();
     setStatus('ok', 'Synchronisé');
   } catch (e) {
@@ -141,4 +161,21 @@ export async function syncNow() {
     busy = false;
     if (again) { again = false; setTimeout(() => syncNow().catch(() => { }), 500); }
   }
+}
+// Envoi protégé : la version en ligne n'est remplacée que si elle n'a pas changé depuis notre dernière lecture.
+async function pushBlob() {
+  const seq = cfg.dirtySeq || 0;
+  const data = JSON.stringify(await S.encryptWithPassword(cfg.passphrase, S.exportData()));
+  const now = new Date().toISOString();
+  let rows;
+  if (cfg.remoteAt) {
+    rows = await api(`/rest/v1/vaults?user_id=eq.${cfg.userId}&updated_at=eq.${encodeURIComponent(cfg.remoteAt)}&select=updated_at`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: { data, updated_at: now } });
+    if (!rows?.length) return false;
+  } else {
+    try { rows = await api('/rest/v1/vaults?select=updated_at', { method: 'POST', headers: { Prefer: 'return=representation' }, body: { user_id: cfg.userId, data, updated_at: now } }); }
+    catch (e) { if (e.status === 409) return false; throw e; }
+  }
+  cfg.remoteAt = rows[0].updated_at;
+  cfg.pushedSeq = seq;
+  return true;
 }

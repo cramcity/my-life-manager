@@ -173,7 +173,7 @@ export async function put(col, obj, { silent = false, ts } = {}) {
   data[col].set(rec.id, rec);
   if (!silent) emit(col);
   await persist(col, rec);
-  if (col !== 'history') writeHook?.();
+  if (col !== 'history' && !ts) writeHook?.(); // les éléments de départ (ts fourni) existent déjà dans le compte : rien à envoyer
   return rec;
 }
 export const patch = (col, id, changes, opts) => put(col, { ...get(col, id), ...changes, id }, opts);
