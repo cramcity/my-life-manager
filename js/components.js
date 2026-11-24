@@ -1,3 +1,4 @@
+import { remindersOf } from './recur.js';
 // Éléments d'interface réutilisables.
 import * as S from './store.js';
 import { esc, relDay, todayStr } from './utils.js';
@@ -43,7 +44,7 @@ export function taskRow(t, { showProject = true, actions = '' } = {}) {
         ${prioBadge(t.priority)}
         ${catChip(t.category)}
         ${showProject ? projChip(t.projectId) : ''}
-        ${t.reminder !== '' && t.reminder != null && t.dueTime ? `<span class="muted-ic" title="Rappel">${icon('bell')}</span>` : ''}
+        ${remindersOf(t).length && t.dueTime ? `<span class="muted-ic" title="Rappel">${icon('bell')}</span>` : ''}
       </div>
     </div>${actions ? `<div class="row-actions">${actions}</div>` : ''}
   </div>`;

@@ -1,5 +1,6 @@
 // Export iCalendar (.ics) avec alertes VALARM : Apple Calendrier affiche ensuite
 // des notifications fiables, même téléphone verrouillé et application fermée.
+import { remindersOf } from './recur.js';
 import * as S from './store.js';
 import { pad, hm2min, min2hm, todayStr, shareOrDownload } from './utils.js';
 
@@ -13,7 +14,7 @@ const RRULE = { daily: 'FREQ=DAILY', weekdays: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR
 function valarm(minBefore, title) {
   return ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escTxt(title)}`, `TRIGGER:-PT${Math.max(0, Number(minBefore) || 0)}M`, 'END:VALARM'];
 }
-function vevent({ uid, title, desc, date, start, end, allDay, rrule, until, exdates = [], alarmMin }) {
+function vevent({ uid, title, desc, date, start, end, allDay, rrule, until, exdates = [], alarmMin, alarms }) {
   const L = ['BEGIN:VEVENT', `UID:${uid}@mylifemanager`, `DTSTAMP:${stamp()}`, `SUMMARY:${escTxt(title)}`];
   if (desc) L.push(`DESCRIPTION:${escTxt(desc)}`);
   if (allDay) {
@@ -24,15 +25,15 @@ function vevent({ uid, title, desc, date, start, end, allDay, rrule, until, exda
   }
   if (rrule) L.push(`RRULE:${rrule}${until ? `;UNTIL=${until.replace(/-/g, '')}T235959` : ''}`);
   exdates.forEach(x => L.push(`EXDATE:${dt(x, start)}`));
-  if (alarmMin !== null && alarmMin !== undefined && alarmMin !== '') L.push(...valarm(alarmMin, title));
+  for (const m of alarms || (alarmMin !== null && alarmMin !== undefined && alarmMin !== '' ? [alarmMin] : [])) L.push(...valarm(m, title));
   L.push('END:VEVENT');
   return L;
 }
 export function eventToICS(e) {
-  return vevent({ uid: 'ev-' + e.id, title: e.title, desc: e.description, date: e.date, start: e.start || '09:00', end: e.end, allDay: !e.start, rrule: RRULE[e.repeat], until: e.repeatUntil, exdates: e.exceptions || [], alarmMin: e.reminder === '' || e.reminder == null ? null : e.reminder });
+  return vevent({ uid: 'ev-' + e.id, title: e.title, desc: e.description, date: e.date, start: e.start || '09:00', end: e.end, allDay: !e.start, rrule: RRULE[e.repeat], until: e.repeatUntil, exdates: e.exceptions || [], alarms: remindersOf(e) });
 }
 export function taskToICS(t) {
-  return vevent({ uid: 'task-' + t.id, title: '✔︎ ' + t.title, desc: t.description, date: t.dueDate, start: t.dueTime, allDay: !t.dueTime, alarmMin: t.dueTime ? (t.reminder === '' || t.reminder == null ? 0 : t.reminder) : null });
+  return vevent({ uid: 'task-' + t.id, title: '✔︎ ' + t.title, desc: t.description, date: t.dueDate, start: t.dueTime, allDay: !t.dueTime, alarms: t.dueTime ? (remindersOf(t).length ? remindersOf(t) : [0]) : [] });
 }
 export function alarmToICS(a) {
   const days = a.days || [];

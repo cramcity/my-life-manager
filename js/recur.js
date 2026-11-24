@@ -23,6 +23,21 @@ export const REMINDERS = [
   { value: '1440', label: '1 jour avant' },
 ];
 
+// Choix proposés (minutes avant le début). Plusieurs rappels possibles par tâche ou activité.
+export const REMIND_CHOICES = [
+  { value: 1440, label: '1 jour avant' }, { value: 120, label: '2 h avant' }, { value: 60, label: '1 h avant' },
+  { value: 30, label: '30 min avant' }, { value: 20, label: '20 min avant' }, { value: 15, label: '15 min avant' },
+  { value: 10, label: '10 min avant' }, { value: 5, label: '5 min avant' }, { value: 0, label: "À l'heure" },
+];
+/** Rappels (minutes avant le début) d'une tâche ou activité — compatible avec l'ancien champ unique « reminder ». */
+export function remindersOf(x) {
+  if (Array.isArray(x?.reminders)) return [...new Set(x.reminders.map(Number).filter(n => n >= 0))];
+  if (x?.reminder === '' || x?.reminder == null) return [];
+  return [Number(x.reminder)];
+}
+export const remindLabel = m => m === 0 ? "à l'heure" : m >= 1440 ? `${m / 1440} j avant` : m >= 60 ? `${m / 60} h avant` : `${m} min avant`;
+const inLabel = m => m === 0 ? "C'est l'heure" : m >= 1440 ? `Dans ${m / 1440} jour${m >= 2880 ? 's' : ''}` : m >= 60 ? `Dans ${m / 60} h` : `Dans ${m} min`;
+
 export function occursOn(ev, ds) {
   if (!ev || ev.deleted || !ev.date || ds < ev.date) return false;
   if (ev.repeatUntil && ds > ev.repeatUntil) return false;
@@ -73,15 +88,21 @@ export function nextAlarm(a, from = new Date()) {
 export function upcomingReminders(fromMs, toMs) {
   const out = [];
   for (const t of S.all('tasks')) {
-    if (t.status === 'done' || t.reminder == null || t.reminder === '' || !t.dueDate || !t.dueTime) continue;
-    const at = parseYMD(t.dueDate); at.setMinutes(hm2min(t.dueTime) - Number(t.reminder));
-    if (at.getTime() >= fromMs && at.getTime() <= toMs) out.push({ kind: 'task', key: `t:${t.id}:${t.dueDate}:${t.dueTime}:${t.reminder}`, at: at.getTime(), title: t.title, body: `Tâche — ${t.dueTime}${t.description ? ' · ' + t.description.slice(0, 80) : ''}`, ref: t.id });
+    if (t.status === 'done' || !t.dueDate || !t.dueTime) continue;
+    const start = parseYMD(t.dueDate); start.setMinutes(hm2min(t.dueTime));
+    for (const m of remindersOf(t)) {
+      const at = start.getTime() - m * 60000;
+      if (at >= fromMs && at <= toMs) out.push({ kind: 'task', key: `t:${t.id}:${t.dueDate}:${t.dueTime}:${m}`, at, before: m, title: t.title, body: `${inLabel(m)} · tâche prévue à ${t.dueTime}${t.description ? ' — ' + t.description.slice(0, 80) : ''}`, ref: t.id });
+    }
   }
   const fromD = ymd(new Date(fromMs - 864e5 * 2)), toD = ymd(new Date(toMs + 864e5 * 2));
   for (const o of eventsBetween(fromD, toD)) {
-    if (o.reminder == null || o.reminder === '' || !o.start) continue;
-    const at = occStart(o).getTime() - Number(o.reminder) * 60000;
-    if (at >= fromMs && at <= toMs) out.push({ kind: 'event', key: `e:${o.id}:${o.occ}:${o.start}:${o.reminder}`, at, title: o.title, body: `${o.start}${o.end ? '–' + o.end : ''}${o.description ? ' · ' + o.description.slice(0, 80) : ''}`, ref: o.id, occ: o.occ });
+    if (!o.start) continue;
+    const start = occStart(o).getTime();
+    for (const m of remindersOf(o)) {
+      const at = start - m * 60000;
+      if (at >= fromMs && at <= toMs) out.push({ kind: 'event', key: `e:${o.id}:${o.occ}:${o.start}:${m}`, at, before: m, title: o.title, body: `${inLabel(m)} · prévu à ${o.start}${o.end ? '–' + o.end : ''}${o.description ? ' — ' + o.description.slice(0, 80) : ''}`, ref: o.id, occ: o.occ });
+    }
   }
   return out.sort((a, b) => a.at - b.at);
 }

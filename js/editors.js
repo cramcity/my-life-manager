@@ -2,14 +2,14 @@
 import * as S from './store.js';
 import { formModal, toast, todayStr, addDaysStr, hm2min, min2hm, choiceBox, confirmBox, nowHM, promptBox, esc } from './utils.js';
 import { PRIORITIES, STATUSES, catOptions, projectOptions } from './components.js';
-import { REPEATS, REMINDERS } from './recur.js';
+import { REPEATS, REMIND_CHOICES, remindersOf } from './recur.js';
 import { SOUNDS, previewSound } from './alarm-engine.js';
 import { exportICS, shortcutAlarmURL, shortcutReminderURL } from './ics.js';
 import { CATEGORY_COLORS } from './store.js';
 
 /* ---------- Tâches ---------- */
 export async function editTask(task = {}, defaults = {}) {
-  const t = { priority: 'normal', status: 'todo', category: '', projectId: '', reminder: '', ...defaults, ...task };
+  const t = { priority: 'normal', status: 'todo', category: '', projectId: '', reminders: [], ...defaults, ...task };
   const isNew = !t.id;
   const fields = [
     { name: 'title', label: 'Titre', value: t.title, required: true, full: true, autofocus: true, placeholder: 'Que faut-il faire ?' },
@@ -20,7 +20,7 @@ export async function editTask(task = {}, defaults = {}) {
     { name: 'status', label: 'Statut', type: 'select', options: STATUSES, value: t.status },
     { name: 'category', label: 'Catégorie', type: 'select', options: catOptions(), value: t.category },
     { name: 'projectId', label: 'Projet', type: 'select', options: projectOptions(), value: t.projectId || '' },
-    { name: 'reminder', label: 'Rappel', type: 'select', options: REMINDERS, value: t.reminder ?? '', hint: "Nécessite une heure. Sonne si l'application est ouverte." },
+    { name: 'reminders', label: 'Me prévenir avant (plusieurs choix possibles)', type: 'chips', options: REMIND_CHOICES, value: remindersOf(t), full: true, hint: "Nécessite une heure. Notification sur l'iPhone, et sonnerie si l'app est ouverte." },
   ];
   const extra = [];
   if (!isNew) extra.push({ label: 'Supprimer', action: 'delete', danger: true, icon: 'trash' });
@@ -34,7 +34,7 @@ export async function editTask(task = {}, defaults = {}) {
   }
   const v = r.values;
   if (!v.title) { toast('Le titre est obligatoire', { type: 'warn' }); return null; }
-  const rec = { ...t, ...v, projectId: v.projectId || null };
+  const rec = { ...t, ...v, reminder: null, projectId: v.projectId || null };
   if (rec.status === 'done' && !t.completedAt) rec.completedAt = Date.now();
   if (rec.status !== 'done') rec.completedAt = null;
   const saved = await S.put('tasks', rec);
@@ -71,7 +71,7 @@ export async function postponeTask(id) {
 export async function editEvent(ev = {}, { occ, defaults = {} } = {}) {
   const now = new Date();
   const startDef = min2hm(Math.min(Math.ceil((now.getHours() * 60 + now.getMinutes()) / 30) * 30, 23 * 60));
-  const e = { date: todayStr(), start: startDef, end: min2hm(Math.min(hm2min(startDef) + 60, 1439)), category: '', repeat: 'none', reminder: '15', ...defaults, ...ev };
+  const e = { date: todayStr(), start: startDef, end: min2hm(Math.min(hm2min(startDef) + 60, 1439)), category: '', repeat: 'none', reminders: [60, 10], ...defaults, ...ev };
   const isNew = !e.id;
   const recurring = e.repeat && e.repeat !== 'none';
   const fields = [
@@ -82,7 +82,7 @@ export async function editEvent(ev = {}, { occ, defaults = {} } = {}) {
     { name: 'end', label: 'Heure de fin', type: 'time', value: e.end },
     { name: 'repeat', label: 'Répétition', type: 'select', options: REPEATS, value: e.repeat },
     { name: 'repeatUntil', label: "Répéter jusqu'au (facultatif)", type: 'date', value: e.repeatUntil },
-    { name: 'reminder', label: 'Rappel', type: 'select', options: REMINDERS, value: e.reminder ?? '' },
+    { name: 'reminders', label: 'Me prévenir avant (plusieurs choix possibles)', type: 'chips', options: REMIND_CHOICES, value: remindersOf(e), full: true },
     { name: 'projectId', label: 'Projet', type: 'select', options: projectOptions(), value: e.projectId || '' },
     { name: 'description', label: 'Description', type: 'textarea', value: e.description, full: true },
   ];
@@ -104,7 +104,7 @@ export async function editEvent(ev = {}, { occ, defaults = {} } = {}) {
     toast('Activité supprimée'); return null;
   }
   const v = r.values;
-  const rec = { ...e, ...v, projectId: v.projectId || null };
+  const rec = { ...e, ...v, reminder: null, projectId: v.projectId || null };
   if (r.action === 'dup') { delete rec.id; delete rec.exceptions; }
   const saved = await S.put('events', rec);
   S.log(isNew || r.action === 'dup' ? 'Activité créée' : 'Activité modifiée', `${saved.title} (${saved.date} ${saved.start})`, { type: 'event', projectId: saved.projectId });

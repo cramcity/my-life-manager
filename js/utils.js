@@ -160,6 +160,7 @@ export function fieldHTML(f) {
     case 'checkbox': return `<label class="check-field ${f.full ? 'full' : ''}"><input type="checkbox" name="${f.name}" ${v ? 'checked' : ''}><span>${esc(f.label)}</span></label>`;
     case 'range': input = `<div class="range-wrap"><input type="range" ${common} min="${f.min ?? 0}" max="${f.max ?? 100}" step="${f.step ?? 1}" value="${esc(v)}" oninput="this.nextElementSibling.textContent=this.value+'${f.suffix || ''}'"><output>${esc(v)}${f.suffix || ''}</output></div>`; break;
     case 'days': input = `<div class="days-pick" data-days="${f.name}">${[1, 2, 3, 4, 5, 6, 0].map(d => `<button type="button" class="day-chip ${(v || []).includes(d) ? 'on' : ''}" data-d="${d}" title="${DAYS_NAMES[d]}">${DAYS_SHORT[d]}</button>`).join('')}</div>`; break;
+    case 'chips': input = `<div class="chips-pick" data-chips="${f.name}">${f.options.map(o => `<button type="button" class="rem-chip ${(v || []).map(Number).includes(Number(o.value)) ? 'on' : ''}" data-v="${o.value}">${esc(o.label)}</button>`).join('')}</div>`; break;
     case 'colors': input = `<div class="color-pick" data-colors="${f.name}">${f.options.map(c => `<button type="button" class="color-dot ${c === v ? 'on' : ''}" data-c="${c}" style="--c:${c}" aria-label="${c}"></button>`).join('')}</div>`; break;
     case 'html': return `<div class="${f.full ? 'full' : ''}">${f.html}</div>`;
     default: input = `<input class="input" type="${f.type || 'text'}" value="${esc(v)}" ${f.min != null ? `min="${f.min}"` : ''} ${f.max != null ? `max="${f.max}"` : ''} ${f.step != null ? `step="${f.step}"` : ''} ${common}>`;
@@ -172,6 +173,7 @@ export function readForm(form, fields) {
     if (!f.name || f.type === 'html') continue;
     if (f.type === 'checkbox') out[f.name] = form.querySelector(`[name="${f.name}"]`).checked;
     else if (f.type === 'days') out[f.name] = [...form.querySelectorAll(`[data-days="${f.name}"] .on`)].map(b => +b.dataset.d);
+    else if (f.type === 'chips') out[f.name] = [...form.querySelectorAll(`[data-chips="${f.name}"] .on`)].map(b => Number(b.dataset.v)).sort((a, b) => b - a);
     else if (f.type === 'colors') out[f.name] = form.querySelector(`[data-colors="${f.name}"] .on`)?.dataset.c || f.value;
     else if (f.type === 'number' || f.type === 'range') out[f.name] = form.querySelector(`[name="${f.name}"]`).value === '' ? null : Number(form.querySelector(`[name="${f.name}"]`).value);
     else out[f.name] = form.querySelector(`[name="${f.name}"]`).value.trim();
@@ -189,7 +191,7 @@ export function formModal({ title, fields, submitLabel = 'Enregistrer', extraBut
                <span class="spacer"></span><button class="btn" data-c type="button">Annuler</button><button class="btn btn-primary" data-s type="button">${esc(submitLabel)}</button>`,
       onMount(el, close) {
         const form = el.querySelector('form');
-        el.querySelectorAll('.days-pick .day-chip').forEach(b => b.onclick = () => b.classList.toggle('on'));
+        el.querySelectorAll('.days-pick .day-chip, .chips-pick .rem-chip').forEach(b => b.onclick = () => b.classList.toggle('on'));
         el.querySelectorAll('.color-pick .color-dot').forEach(b => b.onclick = () => { b.parentNode.querySelectorAll('.on').forEach(x => x.classList.remove('on')); b.classList.add('on'); });
         const submit = () => {
           const values = readForm(form, fields);

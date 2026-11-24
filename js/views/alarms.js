@@ -2,7 +2,7 @@ import * as S from '../store.js';
 import { esc, pad, relDay, ymd, DAYS_SHORT, isStandalone, isIOS, toast } from '../utils.js';
 import { icon } from '../icons.js';
 import { empty, pageHead } from '../components.js';
-import { nextAlarm, upcomingReminders } from '../recur.js';
+import { nextAlarm, upcomingReminders, remindLabel } from '../recur.js';
 import { editAlarm } from '../editors.js';
 import { SOUNDS, notifPermission, requestNotif, wakeSupported, wakeActive, toggleWake, testRing, notify } from '../alarm-engine.js';
 import { shortcutAlarmURL, exportICS } from '../ics.js';
@@ -74,7 +74,7 @@ function render(el, params, ctx) {
     <section class="card">
       <div class="card-head"><h2>${icon('bell')} Rappels des 7 prochains jours</h2></div>
       <p class="muted small">Ajoutez un rappel à une tâche (avec heure) ou à une activité de l'agenda pour le voir ici.</p>
-      ${reminders.length ? `<ul class="rem-list">${reminders.map(r => { const d = new Date(r.at); return `<li><span class="rem-at">${relDay(ymd(d))} · ${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="rem-kind">${r.kind === 'task' ? icon('tasks') : icon('calendar')}</span><b>${esc(r.title)}</b></li>`; }).join('')}</ul>` : empty('bell', 'Aucun rappel programmé.')}
+      ${reminders.length ? `<ul class="rem-list">${reminders.map(r => { const d = new Date(r.at); return `<li><span class="rem-at">${relDay(ymd(d))} · ${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="rem-kind">${r.kind === 'task' ? icon('tasks') : icon('calendar')}</span><b>${esc(r.title)}</b><small class="muted">${remindLabel(r.before)}</small></li>`; }).join('')}</ul>` : empty('bell', 'Aucun rappel programmé.')}
     </section>`;
 
   el.addEventListener('click', async e => {
