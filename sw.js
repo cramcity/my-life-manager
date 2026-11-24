@@ -1,5 +1,5 @@
 // Service worker : fonctionnement hors connexion (cache de l'application) et notifications.
-const VERSION = 'mlm-v1.1.0';
+const VERSION = 'mlm-v1.1.1';
 const ASSETS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/auth.js', 'js/config.js', 'js/store.js', 'js/utils.js', 'js/icons.js', 'js/recur.js', 'js/alarm-engine.js', 'js/ics.js', 'js/sync.js',

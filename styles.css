@@ -630,16 +630,19 @@ input[type=date].input, input[type=time].input { min-height: 40px; }
 
 /* ---------- Profil (connexion / création) ---------- */
 .auth-screen { overflow-y: auto; align-items: start; padding-top: max(32px, env(safe-area-inset-top)); padding-bottom: max(32px, env(safe-area-inset-bottom)); }
-.auth-card { position: relative; width: min(400px, 100%); margin: auto; text-align: left; justify-items: stretch; }
+.auth-screen { grid-template-columns: minmax(0, 1fr); }
+.auth-card { position: relative; width: 100%; max-width: 400px; min-width: 0; margin: auto; text-align: left; justify-items: stretch; }
 .auth-card > img, .auth-card > h1 { justify-self: center; }
 .auth-card > h1 { margin: 0; font-size: 22px; }
 .auth-card > p { text-align: center; margin: 0; }
-.auth-card .input { font-size: 16px; }
+.auth-card { grid-template-columns: minmax(0, 1fr); }
+.auth-card .input { font-size: 16px; width: 100%; min-width: 0; }
 .auth-tabs { justify-self: center; }
 .auth-tabs button { padding: 7px 14px; font-size: 14px; }
+.auth-check span { min-width: 0; }
 .auth-check { font-size: 13px; color: var(--text-2); align-items: flex-start; }
 .auth-check input { margin-top: 1px; flex: none; }
 .auth-warn { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; text-align: left !important; }
 .auth-warn svg { flex: none; width: 16px; height: 16px; color: var(--warn, #f59e0b); margin-top: 1px; }
 .auth-close { position: absolute; top: -8px; right: -8px; }
-.auth-card .btn-ghost { justify-self: center; width: auto; }
+.auth-card .btn-ghost { justify-self: center; width: auto; max-width: 100%; white-space: normal; text-align: center; height: auto; line-height: 1.35; padding-block: 8px; }
