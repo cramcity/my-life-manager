@@ -148,7 +148,7 @@ export async function reschedule() {
     if (!subs?.length) return;
     const uid = Sync.getConfig().userId, rows = [];
     for (const it of plan()) for (const s of subs) {
-      rows.push({ user_id: uid, sub_id: s.id, fire_at: new Date(it.at).toISOString(), payload: await encryptPush(s, { title: it.title, body: it.body, tag: it.tag, url: it.url }) });
+      rows.push({ user_id: uid, sub_id: s.id, fire_at: new Date(it.at).toISOString(), payload: await encryptPush(s, { title: it.title, body: it.body, tag: it.tag, url: it.url, vibrate: S.getSettings().vibrate !== false }) });
     }
     for (let i = 0; i < rows.length; i += 100) await Sync.cloud('/rest/v1/push_queue', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: rows.slice(i, i + 100) });
   } catch (e) { console.warn('Programmation des notifications :', e.message); }

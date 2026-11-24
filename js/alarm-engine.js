@@ -56,6 +56,17 @@ function pattern(name, intensity = 1) {
   }
 }
 let loop = null;
+// Vibration : motif répété tant que l'alarme ou le rappel sonne (téléphones qui le permettent).
+export const VIBRATE_PATTERN = [600, 250, 600, 250, 900];
+let vibTimer = null;
+export const vibrateSupported = () => 'vibrate' in navigator;
+export function startVibration() {
+  if (!vibrateSupported() || S.getSettings().vibrate === false) return;
+  stopVibration();
+  const go = () => { try { navigator.vibrate(VIBRATE_PATTERN); } catch { } };
+  go(); vibTimer = setInterval(go, 3500);
+}
+export function stopVibration() { clearInterval(vibTimer); vibTimer = null; try { navigator.vibrate?.(0); } catch { } }
 export function startSound(name) {
   stopSound();
   let n = 0;
@@ -77,7 +88,7 @@ export async function notify(title, body, tag) {
   if (notifPermission() !== 'granted') return false;
   try {
     const reg = await navigator.serviceWorker?.getRegistration();
-    if (reg) { await reg.showNotification(title, { body, tag, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', requireInteraction: true, renotify: true }); return true; }
+    if (reg) { await reg.showNotification(title, { body, tag, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', requireInteraction: true, renotify: true, silent: false, vibrate: S.getSettings().vibrate === false ? [] : VIBRATE_PATTERN }); return true; }
     new Notification(title, { body, tag }); return true;
   } catch { return false; }
 }
@@ -159,9 +170,11 @@ function ring(item) {
   document.body.append(ov);
   requestAnimationFrame(() => ov.classList.add('show'));
   startSound(item.sound);
+  startVibration();
   if (document.hidden) notify(item.title, item.body || (item.kind === 'alarm' ? 'Alarme' : 'Rappel'), item.key || item.alarm?.id);
   const finish = async snooze => {
     stopSound();
+    stopVibration();
     ov.remove();
     const mins = S.getSettings().snooze || 10;
     firing = null;

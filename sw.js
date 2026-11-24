@@ -1,5 +1,5 @@
 // Service worker : fonctionnement hors connexion (cache de l'application) et notifications.
-const VERSION = 'mlm-v1.4.0';
+const VERSION = 'mlm-v1.5.0';
 const ASSETS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/auth.js', 'js/config.js', 'js/push.js', 'js/store.js', 'js/utils.js', 'js/icons.js', 'js/recur.js', 'js/alarm-engine.js', 'js/ics.js', 'js/sync.js',
@@ -51,6 +51,7 @@ self.addEventListener('push', e => {
   e.waitUntil(self.registration.showNotification(d.title || 'My Life Manager', {
     body: d.body || '', tag: d.tag || undefined, renotify: !!d.tag,
     icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', data: { url: d.url || './' },
+    silent: false, vibrate: d.vibrate === false ? [] : [600, 250, 600, 250, 900], requireInteraction: true,
   }));
 });
 self.addEventListener('notificationclick', e => {
