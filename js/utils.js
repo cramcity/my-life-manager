@@ -46,6 +46,7 @@ export function fmtDuration(min) {
   return m ? `${h} h ${pad(m)}` : `${h} h`;
 }
 export function timeAgo(ts) {
+  if (!ts || ts < 1e11) return 'au départ'; // éléments de départ (date volontairement très ancienne pour la synchronisation)
   const s = Math.round((Date.now() - ts) / 1000);
   if (s < 60) return "à l'instant";
   if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
