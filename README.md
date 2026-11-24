@@ -71,6 +71,13 @@ Alternatives gratuites équivalentes : **Cloudflare Pages** (accepte les dépôt
 - Configuration dans `js/config.js` (la clé « publishable » est publique par conception).
 - Un projet Supabase gratuit sans aucune activité pendant 7 jours est mis en pause : il suffit de le relancer depuis supabase.com (rien n'est perdu ; les données restent aussi sur les appareils).
 
+## Notifications push (app fermée, iPhone verrouillé)
+
+- Écran **Alarmes › Activer les notifications** (iPhone : app installée sur l'écran d'accueil, iOS 16.4+, profil connecté).
+- L'app programme les 7 prochains jours (alarmes, rappels de tâches et d'activités, résumé des tâches du matin), **chiffre chaque message pour chaque appareil** (Web Push, RFC 8291) et le dépose dans la table .
+- La fonction Edge  (), appelée chaque minute par **pg_cron**, envoie les messages arrivés à échéance. Ses clés VAPID sont créées automatiquement et restent dans la base (, invisible des utilisateurs). Schéma : .
+- Une notification sonne une fois comme un message : pour se réveiller, utiliser l'Horloge iPhone (Raccourcis).
+
 ## Développement local
 
 ```
